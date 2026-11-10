@@ -3,6 +3,7 @@ import { AuthenticatedRequest, Settlement } from '../types/index.js';
 import { store } from '../data/store.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { recalculateBalances } from '../services/balance.service.js';
+import { notificationProvider } from '../services/providers/index.js';
 
 export const getSettlements = async (req: AuthenticatedRequest, res: Response) => {
   const { groupId } = req.query;
@@ -41,6 +42,15 @@ export const recordSettlement = async (req: AuthenticatedRequest, res: Response)
 
   store.createSettlement(newSettlement);
   recalculateBalances(currentUserId);
+
+  // Send push notification to payment receiver
+  notificationProvider.sendPush({
+    userId: newSettlement.receiverId,
+    type: 'payment_received',
+    title: 'Payment Received!',
+    body: `${newSettlement.payerName} paid you ${newSettlement.currency} ${newSettlement.amount.toLocaleString()} via ${newSettlement.paymentMethod}`,
+    actionData: { settlementId: newSettlement.id, groupId: newSettlement.groupId || '' },
+  });
 
   // Log activity
   store.createActivity({

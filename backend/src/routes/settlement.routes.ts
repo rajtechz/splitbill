@@ -14,7 +14,9 @@ router.use(requireAuth);
 router.get('/', getSettlements);
 router.post('/', recordSettlement);
 router.post('/:id/confirm', confirmSettlement);
+router.patch('/:id/confirm', confirmSettlement);
 router.post('/:id/reject', rejectSettlement);
+router.patch('/:id/reject', rejectSettlement);
 
 export default router;
 

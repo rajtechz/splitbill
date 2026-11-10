@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { storage } from '../services/storage';
 import { biometricsService } from '../services/native/biometricsService';
+import { repository } from '../services/api/repository';
 
 const PIN_ENABLED_KEY = '@splitmate_pin_enabled';
 const PIN_HASH_KEY = '@splitmate_pin_code';
@@ -69,6 +70,7 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
   setPin: async (pin: string) => {
     await storage.setItem(PIN_HASH_KEY, pin);
     await storage.setItem(PIN_ENABLED_KEY, 'true');
+    repository.setupMpin(pin).catch(() => {});
     set({ isPinEnabled: true, hasPinSet: true, isLocked: false, failedAttempts: 0 });
   },
 
@@ -109,6 +111,7 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
   toggleBiometrics: async (enabled?: boolean) => {
     const nextState = enabled !== undefined ? enabled : !get().isBiometricsEnabled;
     await storage.setItem(BIOMETRICS_ENABLED_KEY, nextState ? 'true' : 'false');
+    repository.toggleBiometrics(nextState).catch(() => {});
     set({ isBiometricsEnabled: nextState });
   },
 

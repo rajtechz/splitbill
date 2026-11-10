@@ -13,6 +13,7 @@ import { useTheme } from '../../theme';
 import { Icon } from '../common/Icon';
 import { Avatar } from '../avatars/Avatar';
 import { contactsService, PhoneContact } from '../../services/native/contactsService';
+import { repository } from '../../services/api/repository';
 
 interface ContactsPickerModalProps {
   visible: boolean;
@@ -41,6 +42,20 @@ export const ContactsPickerModal: React.FC<ContactsPickerModalProps> = ({
     setLoading(true);
     try {
       const list = await contactsService.getContacts();
+      try {
+        const syncRes = await repository.syncContacts(list);
+        if (syncRes?.contacts) {
+          const registeredSet = new Set(
+            syncRes.contacts.filter((c: any) => c.isRegistered).map((c: any) => c.contactName.toLowerCase())
+          );
+          const enriched = list.map(c => ({
+            ...c,
+            isRegistered: registeredSet.has(c.name.toLowerCase()),
+          }));
+          setContacts(enriched);
+          return;
+        }
+      } catch {}
       setContacts(list);
     } finally {
       setLoading(false);
@@ -145,9 +160,26 @@ export const ContactsPickerModal: React.FC<ContactsPickerModalProps> = ({
                   >
                     <Avatar name={contact.name} url={contact.avatarUrl} size={44} />
                     <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                        {contact.name}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
+                          {contact.name}
+                        </Text>
+                        {(contact as any).isRegistered && (
+                          <View
+                            style={{
+                              marginLeft: 6,
+                              backgroundColor: '#DCFCE7',
+                              paddingHorizontal: 6,
+                              paddingVertical: 2,
+                              borderRadius: 6,
+                            }}
+                          >
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#166534' }}>
+                              On SplitMate
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                       {contact.phoneNumber && (
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
                           <Icon name="phone" size={12} color={colors.textSecondary} />

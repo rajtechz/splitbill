@@ -31,6 +31,21 @@ export class HttpRepository implements ISplitMateRepository {
     return extractData<User>(res);
   }
 
+  async uploadAvatar(base64: string, mimeType?: string): Promise<{ avatarUrl: string; user?: User }> {
+    const res = await apiClient.post('/users/me/avatar', { base64, mimeType });
+    return extractData<{ avatarUrl: string; user?: User }>(res);
+  }
+
+  async syncContacts(contacts: Array<{ name: string; phoneNumber?: string; email?: string }>): Promise<any> {
+    const res = await apiClient.post('/users/sync-contacts', { contacts });
+    return extractData<any>(res);
+  }
+
+  async updateLocationCurrency(countryCode: string): Promise<any> {
+    const res = await apiClient.post('/users/me/location-currency', { countryCode });
+    return extractData<any>(res);
+  }
+
   // Groups
   async getGroups(): Promise<Group[]> {
     const res = await apiClient.get('/groups');
@@ -165,6 +180,10 @@ export class HttpRepository implements ISplitMateRepository {
     await apiClient.patch(`/notifications/${id}/read`);
   }
 
+  async markAllNotificationsAsRead(): Promise<void> {
+    await apiClient.patch('/notifications/read-all');
+  }
+
   // Search
   async search(query: string): Promise<{
     groups: Group[];
@@ -177,5 +196,36 @@ export class HttpRepository implements ISplitMateRepository {
       friends: Friend[];
       expenses: Expense[];
     }>(res);
+  }
+
+  // Security & mPIN
+  async setupMpin(pin: string): Promise<boolean> {
+    const res = await apiClient.post('/auth/mpin/setup', { pin });
+    return extractData<any>(res)?.hasPinSet ?? true;
+  }
+
+  async verifyMpin(pin: string): Promise<boolean> {
+    try {
+      const res = await apiClient.post('/auth/mpin/verify', { pin });
+      return extractData<any>(res)?.verified ?? true;
+    } catch {
+      return false;
+    }
+  }
+
+  async toggleBiometrics(enabled?: boolean): Promise<boolean> {
+    const res = await apiClient.post('/auth/mpin/toggle-biometrics', { enabled });
+    return extractData<any>(res)?.isBiometricsEnabled ?? true;
+  }
+
+  // Metadata & Config
+  async getCurrencies(): Promise<any> {
+    const res = await apiClient.get('/config/currencies');
+    return extractData<any>(res);
+  }
+
+  async getCategories(): Promise<any> {
+    const res = await apiClient.get('/config/categories');
+    return extractData<any>(res);
   }
 }

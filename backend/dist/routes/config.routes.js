@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const config_controller_js_1 = require("../controllers/config.controller.js");
+const router = (0, express_1.Router)();
+router.get('/currencies', config_controller_js_1.getCurrencies);
+router.get('/currency-by-country/:code', config_controller_js_1.getCurrencyByCountry);
+router.get('/categories', config_controller_js_1.getCategories);
+router.get('/features', config_controller_js_1.getFeatureFlags);
+exports.default = router;

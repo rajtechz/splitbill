@@ -21,6 +21,7 @@ import { Icon } from '../../../components/common/Icon';
 import { CurrencySelector } from '../../../components/inputs/CurrencySelector';
 import { PhotoPickerModal } from '../../../components/modals/PhotoPickerModal';
 import { locationService } from '../../../services/native/locationService';
+import { repository } from '../../../services/api/repository';
 import { CurrencyCode } from '../../../types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -44,6 +45,7 @@ export const EditProfileScreen: React.FC = () => {
     try {
       const res = await locationService.detectCountryAndCurrency();
       setCurrency(res.suggestedCurrency);
+      repository.updateLocationCurrency(res.countryCode).catch(() => {});
       Alert.alert(
         'Location Detected',
         `Country: ${res.countryName} (${res.countryCode})\nDefault currency automatically configured to ${res.suggestedCurrency} (${res.currencySymbol}).`

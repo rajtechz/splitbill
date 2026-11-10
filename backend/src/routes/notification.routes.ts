@@ -1,11 +1,17 @@
 import { Router } from 'express';
-import { getNotifications, markAsRead } from '../controllers/notification.controller.js';
-import { requireAuth } from '../middleware/auth.middleware.js';
+import {
+  getNotifications,
+  markAsRead,
+  markAllAsRead,
+  sendTestNotification,
+} from '../controllers/notification.controller.js';
+import { requireAuth, optionalAuth } from '../middleware/auth.middleware.js';
 
 const router = Router();
-router.use(requireAuth);
-router.get('/', getNotifications);
-router.patch('/:id/read', markAsRead);
+
+router.get('/', optionalAuth, getNotifications);
+router.patch('/read-all', optionalAuth, markAllAsRead);
+router.patch('/:id/read', optionalAuth, markAsRead);
+router.post('/test-push', optionalAuth, sendTestNotification);
 
 export default router;
-

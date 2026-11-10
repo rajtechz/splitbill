@@ -60,6 +60,19 @@ export interface ISplitMateRepository {
     friends: Friend[];
     expenses: Expense[];
   }>;
+
+  // Profile & Media
+  uploadAvatar(base64: string, mimeType?: string): Promise<{ avatarUrl: string; user?: User }>;
+  syncContacts(contacts: Array<{ name: string; phoneNumber?: string; email?: string }>): Promise<any>;
+  updateLocationCurrency(countryCode: string): Promise<any>;
+  markAllNotificationsAsRead(): Promise<void>;
+
+  // Security & Config
+  setupMpin(pin: string): Promise<boolean>;
+  verifyMpin(pin: string): Promise<boolean>;
+  toggleBiometrics(enabled?: boolean): Promise<boolean>;
+  getCurrencies(): Promise<any>;
+  getCategories(): Promise<any>;
 }
 
 class LocalPersistentRepository implements ISplitMateRepository {
@@ -490,6 +503,67 @@ class LocalPersistentRepository implements ISplitMateRepository {
       expenses: matchedExpenses,
     };
   }
+
+  // Profile & Media
+  async uploadAvatar(base64: string): Promise<{ avatarUrl: string; user?: User }> {
+    this.user = { ...this.user, avatarUrl: base64 };
+    await this.persistState();
+    return { avatarUrl: base64, user: this.user };
+  }
+
+  async syncContacts(contacts: Array<{ name: string; phoneNumber?: string; email?: string }>): Promise<any> {
+    const matches = contacts.map(c => {
+      const isKnown = this.friends.some(f => f.name.toLowerCase() === c.name.toLowerCase());
+      return {
+        contactName: c.name,
+        phoneNumber: c.phoneNumber,
+        email: c.email,
+        isRegistered: isKnown,
+      };
+    });
+    return { contacts: matches, total: matches.length };
+  }
+
+  async updateLocationCurrency(countryCode: string): Promise<any> {
+    const currency = countryCode === 'US' ? 'USD' : (countryCode === 'GB' ? 'GBP' : 'INR');
+    this.user = { ...this.user, defaultCurrency: currency as any };
+    await this.persistState();
+    return { country: countryCode, currency, user: this.user };
+  }
+
+  async markAllNotificationsAsRead(): Promise<void> {
+    this.notifications = this.notifications.map(n => ({ ...n, read: true }));
+    await this.persistState();
+  }
+
+  // Security & Config
+  async setupMpin(): Promise<boolean> {
+    return true;
+  }
+
+  async verifyMpin(pin: string): Promise<boolean> {
+    return pin === '1234';
+  }
+
+  async toggleBiometrics(): Promise<boolean> {
+    return true;
+  }
+
+  async getCurrencies(): Promise<any> {
+    return [
+      { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
+      { code: 'USD', name: 'US Dollar', symbol: '$' },
+      { code: 'EUR', name: 'Euro', symbol: '€' },
+      { code: 'GBP', name: 'British Pound', symbol: '£' },
+    ];
+  }
+
+  async getCategories(): Promise<any> {
+    return {
+      expenses: ['Food', 'Groceries', 'Transport', 'Rent', 'Utilities', 'Shopping', 'Entertainment', 'Travel', 'Medical', 'Other'],
+      groups: ['Trip', 'Home', 'Couple', 'Family', 'Friends', 'Office', 'Other'],
+    };
+  }
 }
 
 export class HybridSplitMateRepository implements ISplitMateRepository {
@@ -635,6 +709,44 @@ export class HybridSplitMateRepository implements ISplitMateRepository {
     expenses: Expense[];
   }> {
     return this.executeWithFallback(r => r.search(query), 'search');
+  }
+
+  // Profile & Media
+  uploadAvatar(base64: string, mimeType?: string): Promise<{ avatarUrl: string; user?: User }> {
+    return this.executeWithFallback(r => r.uploadAvatar(base64, mimeType), 'uploadAvatar');
+  }
+
+  syncContacts(contacts: Array<{ name: string; phoneNumber?: string; email?: string }>): Promise<any> {
+    return this.executeWithFallback(r => r.syncContacts(contacts), 'syncContacts');
+  }
+
+  updateLocationCurrency(countryCode: string): Promise<any> {
+    return this.executeWithFallback(r => r.updateLocationCurrency(countryCode), 'updateLocationCurrency');
+  }
+
+  markAllNotificationsAsRead(): Promise<void> {
+    return this.executeWithFallback(r => r.markAllNotificationsAsRead(), 'markAllNotificationsAsRead');
+  }
+
+  // Security & Config
+  setupMpin(pin: string): Promise<boolean> {
+    return this.executeWithFallback(r => r.setupMpin(pin), 'setupMpin');
+  }
+
+  verifyMpin(pin: string): Promise<boolean> {
+    return this.executeWithFallback(r => r.verifyMpin(pin), 'verifyMpin');
+  }
+
+  toggleBiometrics(enabled?: boolean): Promise<boolean> {
+    return this.executeWithFallback(r => r.toggleBiometrics(enabled), 'toggleBiometrics');
+  }
+
+  getCurrencies(): Promise<any> {
+    return this.executeWithFallback(r => r.getCurrencies(), 'getCurrencies');
+  }
+
+  getCategories(): Promise<any> {
+    return this.executeWithFallback(r => r.getCategories(), 'getCategories');
   }
 }
 

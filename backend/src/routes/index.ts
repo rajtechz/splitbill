@@ -8,6 +8,7 @@ import settlementRoutes from './settlement.routes.js';
 import activityRoutes from './activity.routes.js';
 import notificationRoutes from './notification.routes.js';
 import searchRoutes from './search.routes.js';
+import configRoutes from './config.routes.js';
 
 const apiRouter = Router();
 
@@ -20,6 +21,6 @@ apiRouter.use('/settlements', settlementRoutes);
 apiRouter.use('/activities', activityRoutes);
 apiRouter.use('/notifications', notificationRoutes);
 apiRouter.use('/search', searchRoutes);
+apiRouter.use('/config', configRoutes);
 
 export default apiRouter;
-

@@ -13,6 +13,7 @@ const settlement_routes_js_1 = __importDefault(require("./settlement.routes.js")
 const activity_routes_js_1 = __importDefault(require("./activity.routes.js"));
 const notification_routes_js_1 = __importDefault(require("./notification.routes.js"));
 const search_routes_js_1 = __importDefault(require("./search.routes.js"));
+const config_routes_js_1 = __importDefault(require("./config.routes.js"));
 const apiRouter = (0, express_1.Router)();
 apiRouter.use('/auth', auth_routes_js_1.default);
 apiRouter.use('/users', user_routes_js_1.default);
@@ -23,4 +24,5 @@ apiRouter.use('/settlements', settlement_routes_js_1.default);
 apiRouter.use('/activities', activity_routes_js_1.default);
 apiRouter.use('/notifications', notification_routes_js_1.default);
 apiRouter.use('/search', search_routes_js_1.default);
+apiRouter.use('/config', config_routes_js_1.default);
 exports.default = apiRouter;

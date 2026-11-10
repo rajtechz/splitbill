@@ -3,6 +3,7 @@ import { User } from '../types';
 import { CURRENT_USER } from '../services/api/mockData';
 import { storage } from '../services/storage';
 import { authService } from '../features/auth/services/authService';
+import { repository } from '../services/api/repository';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -106,6 +107,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const next = { ...cur, ...updated };
       set({ currentUser: next });
       storage.setItem(storage.STORAGE_KEYS.USER_SESSION, next).catch(() => {});
+      repository.updateUserProfile(updated).catch(() => {});
     }
   },
 

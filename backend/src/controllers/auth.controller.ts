@@ -3,7 +3,8 @@ import bcrypt from 'bcryptjs';
 import { store } from '../data/store.js';
 import { generateTokens, verifyRefreshToken } from '../utils/jwt.js';
 import { sendSuccess, sendError } from '../utils/response.js';
-import { User } from '../types/index.js';
+import { User, AuthenticatedRequest } from '../types/index.js';
+import { otpProvider } from '../services/providers/index.js';
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -25,7 +26,7 @@ export const login = async (req: Request, res: Response) => {
   }
 
   const tokens = generateTokens(user);
-  const { passwordHash, ...safeUser } = user;
+  const { passwordHash: _, mPin: __, ...safeUser } = user;
 
   return sendSuccess(res, {
     user: safeUser,
@@ -34,7 +35,7 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const register = async (req: Request, res: Response) => {
-  const { name, email, password, phoneNumber, defaultCurrency } = req.body;
+  const { name, email, password, phoneNumber, defaultCurrency, country } = req.body;
 
   if (!name || !email) {
     return sendError(res, 'Name and email are required', 400, 'VALIDATION_ERROR');
@@ -54,12 +55,16 @@ export const register = async (req: Request, res: Response) => {
     passwordHash,
     phoneNumber,
     defaultCurrency: defaultCurrency || 'INR',
+    country: country || 'IN',
+    isPinEnabled: true,
+    isBiometricsEnabled: true,
+    mPin: '1234',
     createdAt: new Date().toISOString(),
   };
 
   store.createUser(newUser);
   const tokens = generateTokens(newUser);
-  const { passwordHash: _, ...safeUser } = newUser;
+  const { passwordHash: _, mPin: __, ...safeUser } = newUser;
 
   return sendSuccess(res, {
     user: safeUser,
@@ -68,42 +73,56 @@ export const register = async (req: Request, res: Response) => {
 };
 
 export const sendOtp = async (req: Request, res: Response) => {
-  const { phoneNumber } = req.body;
-  if (!phoneNumber) {
-    return sendError(res, 'Phone number is required', 400, 'VALIDATION_ERROR');
+  const { phoneNumber, email } = req.body;
+  if (!phoneNumber && !email) {
+    return sendError(res, 'Phone number or email is required', 400, 'VALIDATION_ERROR');
   }
 
-  // In production, integrate SMS provider (Twilio / Firebase).
-  // For dev, OTP 123456 is always accepted.
+  // Uses flexible OtpProvider (Mock/Twilio/Firebase)
+  const result = await otpProvider.sendOtp({ phone: phoneNumber, email });
+
   return sendSuccess(res, {
-    sent: true,
+    sent: result.success,
     phoneNumber,
-  }, `OTP sent to ${phoneNumber}. (Dev code: 123456)`);
+    email,
+    trackingId: result.trackingId,
+    devOtp: result.devOtp,
+  }, result.message);
 };
 
 export const verifyOtp = async (req: Request, res: Response) => {
-  const { phoneNumber, otp } = req.body;
+  const { phoneNumber, email, otp } = req.body;
 
-  if (!phoneNumber || !otp) {
-    return sendError(res, 'Phone number and OTP code are required', 400, 'VALIDATION_ERROR');
+  if ((!phoneNumber && !email) || !otp) {
+    return sendError(res, 'Phone number/email and OTP code are required', 400, 'VALIDATION_ERROR');
   }
 
-  // Find or create user by phone
-  let user = store.findUserByPhone(phoneNumber);
+  const isValid = await otpProvider.verifyOtp({ phone: phoneNumber, email }, otp);
+  if (!isValid) {
+    return sendError(res, 'Invalid or expired OTP code (Test code: 123456)', 400, 'INVALID_OTP');
+  }
+
+  // Find or create user dynamically
+  let user = phoneNumber ? store.findUserByPhone(phoneNumber) : (email ? store.findUserByEmail(email) : undefined);
   if (!user) {
+    const identifier = phoneNumber || email || 'user';
     user = {
       id: `usr_${Date.now()}`,
-      name: `User ${phoneNumber.slice(-4)}`,
-      email: `${phoneNumber.replace(/[^0-9]/g, '')}@splitmate.app`,
+      name: phoneNumber ? `User ${phoneNumber.slice(-4)}` : identifier.split('@')[0],
+      email: email || `${(phoneNumber || '').replace(/[^0-9]/g, '')}@splitmate.app`,
       phoneNumber,
       defaultCurrency: 'INR',
+      country: 'IN',
+      isPinEnabled: true,
+      isBiometricsEnabled: true,
+      mPin: '1234',
       createdAt: new Date().toISOString(),
     };
     store.createUser(user);
   }
 
   const tokens = generateTokens(user);
-  const { passwordHash, ...safeUser } = user;
+  const { passwordHash: _, mPin: __, ...safeUser } = user;
 
   return sendSuccess(res, {
     user: safeUser,
@@ -141,3 +160,55 @@ export const logout = async (_req: Request, res: Response) => {
   return sendSuccess(res, null, 'Logged out successfully');
 };
 
+// --- 4-Digit mPIN & Biometrics Management ---
+
+export const setupMpin = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.id || req.body.userId || 'usr_me';
+  const { pin } = req.body;
+
+  if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+    return sendError(res, 'PIN must be exactly 4 digits', 400, 'INVALID_PIN_FORMAT');
+  }
+
+  const ok = store.setMpin(userId, pin);
+  if (!ok) {
+    return sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
+  }
+
+  return sendSuccess(res, { isPinEnabled: true, hasPinSet: true }, '4-digit mPIN set successfully');
+};
+
+export const verifyMpin = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.id || req.body.userId || 'usr_me';
+  const { pin } = req.body;
+
+  if (!pin) {
+    return sendError(res, 'mPIN is required', 400, 'VALIDATION_ERROR');
+  }
+
+  const isMatch = store.verifyMpin(userId, pin);
+  if (isMatch) {
+    return sendSuccess(res, { verified: true }, 'mPIN verified successfully');
+  } else {
+    return sendError(res, 'Incorrect mPIN code', 401, 'INVALID_PIN');
+  }
+};
+
+export const toggleBiometrics = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.id || req.body.userId || 'usr_me';
+  const { enabled } = req.body;
+
+  const current = store.toggleBiometrics(userId, enabled);
+  return sendSuccess(res, { isBiometricsEnabled: current }, `Biometric unlock ${current ? 'enabled' : 'disabled'}`);
+};
+
+export const getSecuritySettings = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.id || 'usr_me';
+  const user = store.findUserById(userId);
+
+  return sendSuccess(res, {
+    isPinEnabled: user?.isPinEnabled ?? true,
+    hasPinSet: Boolean(user?.mPin),
+    isBiometricsEnabled: user?.isBiometricsEnabled ?? true,
+  }, 'Security settings fetched');
+};

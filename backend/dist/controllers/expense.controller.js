@@ -4,6 +4,7 @@ exports.addComment = exports.deleteExpense = exports.updateExpense = exports.cre
 const store_js_1 = require("../data/store.js");
 const response_js_1 = require("../utils/response.js");
 const balance_service_js_1 = require("../services/balance.service.js");
+const index_js_1 = require("../services/providers/index.js");
 const getExpenses = async (req, res) => {
     const { groupId } = req.query;
     const expenses = store_js_1.store.getExpenses(groupId);
@@ -47,6 +48,18 @@ const createExpense = async (req, res) => {
     store_js_1.store.createExpense(newExpense);
     // Recalculate group and friend balances
     (0, balance_service_js_1.recalculateBalances)(currentUserId);
+    // Send push notification to other participants dynamically
+    for (const p of newExpense.participants) {
+        if (p.userId !== currentUserId && p.shareAmount > 0) {
+            index_js_1.notificationProvider.sendPush({
+                userId: p.userId,
+                type: 'expense_added',
+                title: `New Expense: ${newExpense.title}`,
+                body: `${req.user?.name || 'A group member'} added "${newExpense.title}". Your share is ${newExpense.currency} ${p.shareAmount.toLocaleString()}`,
+                actionData: { expenseId: newExpense.id, groupId: newExpense.groupId || '' },
+            });
+        }
+    }
     // Log activity
     store_js_1.store.createActivity({
         id: `act_${Date.now()}`,

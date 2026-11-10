@@ -9,7 +9,9 @@
       "upiId": "alex.johnson@okaxis",
       "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
       "defaultCurrency": "INR",
-      "createdAt": "2026-01-15T08:00:00Z"
+      "createdAt": "2026-01-15T08:00:00Z",
+      "mPin": "4321",
+      "isPinEnabled": true
     },
     {
       "id": "usr_priya",
@@ -583,6 +585,39 @@
     }
   ],
   "notifications": [
+    {
+      "id": "notif_1794310690235_jfg3",
+      "type": "payment_received",
+      "title": "Payment Received",
+      "body": "Priya paid you ₹500 via UPI",
+      "message": "Priya paid you ₹500 via UPI",
+      "timestamp": "2026-11-10T11:38:10.235Z",
+      "read": false
+    },
+    {
+      "id": "notif_1794310227331_yutp",
+      "type": "payment_received",
+      "title": "Payment Received",
+      "body": "Priya paid you ₹500 via UPI",
+      "timestamp": "2026-11-10T11:30:27.331Z",
+      "read": false
+    },
+    {
+      "id": "notif_1794310155563_1zve",
+      "type": "payment_received",
+      "title": "Payment Received",
+      "body": "Priya paid you ₹500 via UPI",
+      "timestamp": "2026-11-10T11:29:15.563Z",
+      "read": false
+    },
+    {
+      "id": "notif_1794310121205_c6p2",
+      "type": "payment_received",
+      "title": "Payment Received",
+      "body": "Priya paid you ₹500 via UPI",
+      "timestamp": "2026-11-10T11:28:41.205Z",
+      "read": false
+    },
     {
       "id": "notif_1",
       "title": "Payment Received",

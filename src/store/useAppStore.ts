@@ -53,6 +53,7 @@ interface AppState {
 
   // Notifications
   markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -213,6 +214,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     await repository.markNotificationAsRead(id);
     set(state => ({
       notifications: state.notifications.map(n => (n.id === id ? { ...n, read: true } : n)),
+    }));
+  },
+
+  markAllNotificationsRead: async () => {
+    await repository.markAllNotificationsAsRead();
+    set(state => ({
+      notifications: state.notifications.map(n => ({ ...n, read: true })),
     }));
   },
 }));

@@ -43,8 +43,33 @@ export interface User {
   upiId?: string;
   avatarUrl?: string;
   defaultCurrency: CurrencyCode;
+  country?: string;
+  mPin?: string;
+  isPinEnabled?: boolean;
+  isBiometricsEnabled?: boolean;
   createdAt: string;
   updatedAt?: string;
+}
+
+export interface PhoneContactInput {
+  name: string;
+  phoneNumber?: string;
+  email?: string;
+}
+
+export interface MatchedContact {
+  contactName: string;
+  phoneNumber?: string;
+  email?: string;
+  isRegistered: boolean;
+  user?: Omit<User, 'passwordHash' | 'mPin'>;
+}
+
+export interface CurrencyDetail {
+  code: CurrencyCode;
+  name: string;
+  symbol: string;
+  exchangeRateToUSD: number;
 }
 
 export interface GroupMember {
@@ -179,6 +204,7 @@ export interface AppNotification {
     | 'friend_invite';
   title: string;
   body: string;
+  message?: string;
   timestamp: string;
   read: boolean;
   actionData?: Record<string, string>;

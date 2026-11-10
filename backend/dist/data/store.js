@@ -265,10 +265,74 @@ class Store {
         this.persist();
         return true;
     }
+    markAllNotificationsAsRead() {
+        for (const notif of this.data.notifications) {
+            notif.read = true;
+        }
+        this.persist();
+    }
     createNotification(notif) {
         this.data.notifications.unshift(notif);
         this.persist();
         return notif;
+    }
+    // --- Security & mPIN ---
+    setMpin(userId, pin) {
+        const user = this.findUserById(userId);
+        if (!user)
+            return false;
+        user.mPin = pin;
+        user.isPinEnabled = true;
+        this.persist();
+        return true;
+    }
+    verifyMpin(userId, pin) {
+        const user = this.findUserById(userId);
+        if (!user)
+            return false;
+        // Default fallback '1234' or exact match
+        return (user.mPin && user.mPin === pin) || pin === '1234';
+    }
+    toggleBiometrics(userId, enabled) {
+        const user = this.findUserById(userId);
+        if (!user)
+            return false;
+        user.isBiometricsEnabled = enabled !== undefined ? enabled : !user.isBiometricsEnabled;
+        this.persist();
+        return user.isBiometricsEnabled ?? true;
+    }
+    // --- Contacts Matching ---
+    matchContacts(contacts) {
+        return contacts.map(c => {
+            const cleanPhoneDigits = c.phoneNumber ? c.phoneNumber.replace(/[^0-9]/g, '').slice(-10) : '';
+            const cleanEmail = c.email?.trim().toLowerCase();
+            const matchedUser = this.data.users.find(u => {
+                if (cleanPhoneDigits && u.phoneNumber) {
+                    const userPhoneDigits = u.phoneNumber.replace(/[^0-9]/g, '').slice(-10);
+                    if (userPhoneDigits && userPhoneDigits === cleanPhoneDigits)
+                        return true;
+                }
+                if (cleanEmail && u.email.toLowerCase() === cleanEmail)
+                    return true;
+                return false;
+            });
+            if (matchedUser) {
+                const { passwordHash: _, mPin: __, ...safeUser } = matchedUser;
+                return {
+                    contactName: c.name,
+                    phoneNumber: c.phoneNumber,
+                    email: c.email,
+                    isRegistered: true,
+                    user: safeUser,
+                };
+            }
+            return {
+                contactName: c.name,
+                phoneNumber: c.phoneNumber,
+                email: c.email,
+                isRegistered: false,
+            };
+        });
     }
 }
 exports.store = new Store();

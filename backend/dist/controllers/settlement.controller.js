@@ -4,6 +4,7 @@ exports.rejectSettlement = exports.confirmSettlement = exports.recordSettlement 
 const store_js_1 = require("../data/store.js");
 const response_js_1 = require("../utils/response.js");
 const balance_service_js_1 = require("../services/balance.service.js");
+const index_js_1 = require("../services/providers/index.js");
 const getSettlements = async (req, res) => {
     const { groupId } = req.query;
     const settlements = store_js_1.store.getSettlements(groupId);
@@ -37,6 +38,14 @@ const recordSettlement = async (req, res) => {
     };
     store_js_1.store.createSettlement(newSettlement);
     (0, balance_service_js_1.recalculateBalances)(currentUserId);
+    // Send push notification to payment receiver
+    index_js_1.notificationProvider.sendPush({
+        userId: newSettlement.receiverId,
+        type: 'payment_received',
+        title: 'Payment Received!',
+        body: `${newSettlement.payerName} paid you ${newSettlement.currency} ${newSettlement.amount.toLocaleString()} via ${newSettlement.paymentMethod}`,
+        actionData: { settlementId: newSettlement.id, groupId: newSettlement.groupId || '' },
+    });
     // Log activity
     store_js_1.store.createActivity({
         id: `act_${Date.now()}`,

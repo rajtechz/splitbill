@@ -46,3 +46,31 @@ export const requireAuth = (
   next();
 };
 
+export const optionalAuth = (
+  req: AuthenticatedRequest,
+  _res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    if (token.startsWith('mock_jwt_token_')) {
+      const user = store.findUserById('usr_me');
+      if (user) req.user = user;
+    } else {
+      const decoded = verifyAccessToken(token);
+      if (decoded && decoded.id) {
+        const user = store.findUserById(decoded.id);
+        if (user) req.user = user;
+      }
+    }
+  }
+
+  // If no user found from token, set default demo user
+  if (!req.user) {
+    const defaultUser = store.findUserById('usr_me');
+    if (defaultUser) req.user = defaultUser;
+  }
+
+  next();
+};

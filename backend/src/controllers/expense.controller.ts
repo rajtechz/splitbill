@@ -3,6 +3,7 @@ import { AuthenticatedRequest, Expense, ExpenseComment } from '../types/index.js
 import { store } from '../data/store.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { recalculateBalances } from '../services/balance.service.js';
+import { notificationProvider } from '../services/providers/index.js';
 
 export const getExpenses = async (req: AuthenticatedRequest, res: Response) => {
   const { groupId } = req.query;
@@ -54,6 +55,19 @@ export const createExpense = async (req: AuthenticatedRequest, res: Response) =>
 
   // Recalculate group and friend balances
   recalculateBalances(currentUserId);
+
+  // Send push notification to other participants dynamically
+  for (const p of newExpense.participants) {
+    if (p.userId !== currentUserId && p.shareAmount > 0) {
+      notificationProvider.sendPush({
+        userId: p.userId,
+        type: 'expense_added',
+        title: `New Expense: ${newExpense.title}`,
+        body: `${req.user?.name || 'A group member'} added "${newExpense.title}". Your share is ${newExpense.currency} ${p.shareAmount.toLocaleString()}`,
+        actionData: { expenseId: newExpense.id, groupId: newExpense.groupId || '' },
+      });
+    }
+  }
 
   // Log activity
   store.createActivity({

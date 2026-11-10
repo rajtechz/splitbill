@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.requireAuth = void 0;
+exports.optionalAuth = exports.requireAuth = void 0;
 const jwt_js_1 = require("../utils/jwt.js");
 const store_js_1 = require("../data/store.js");
 const response_js_1 = require("../utils/response.js");
@@ -36,3 +36,30 @@ const requireAuth = (req, res, next) => {
     next();
 };
 exports.requireAuth = requireAuth;
+const optionalAuth = (req, _res, next) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        if (token.startsWith('mock_jwt_token_')) {
+            const user = store_js_1.store.findUserById('usr_me');
+            if (user)
+                req.user = user;
+        }
+        else {
+            const decoded = (0, jwt_js_1.verifyAccessToken)(token);
+            if (decoded && decoded.id) {
+                const user = store_js_1.store.findUserById(decoded.id);
+                if (user)
+                    req.user = user;
+            }
+        }
+    }
+    // If no user found from token, set default demo user
+    if (!req.user) {
+        const defaultUser = store_js_1.store.findUserById('usr_me');
+        if (defaultUser)
+            req.user = defaultUser;
+    }
+    next();
+};
+exports.optionalAuth = optionalAuth;

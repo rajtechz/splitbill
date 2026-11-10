@@ -1,5 +1,7 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
 import { config } from './config/index.js';
 import apiRouter from './routes/index.js';
 import { errorHandler } from './middleware/error.middleware.js';
@@ -12,6 +14,13 @@ export const createApp = () => {
   app.use(cors({ origin: config.corsOrigin }));
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+  // Static uploads directory
+  const uploadsDir = path.resolve(process.cwd(), 'data', 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch {}
+  }
+  app.use('/uploads', express.static(uploadsDir));
 
   // Request logger
   app.use((req, res, next) => {

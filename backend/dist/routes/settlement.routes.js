@@ -8,5 +8,7 @@ router.use(auth_middleware_js_1.requireAuth);
 router.get('/', settlement_controller_js_1.getSettlements);
 router.post('/', settlement_controller_js_1.recordSettlement);
 router.post('/:id/confirm', settlement_controller_js_1.confirmSettlement);
+router.patch('/:id/confirm', settlement_controller_js_1.confirmSettlement);
 router.post('/:id/reject', settlement_controller_js_1.rejectSettlement);
+router.patch('/:id/reject', settlement_controller_js_1.rejectSettlement);
 exports.default = router;

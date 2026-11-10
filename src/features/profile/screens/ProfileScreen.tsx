@@ -23,6 +23,7 @@ import { notificationService } from '../../../services/native/notificationServic
 import { useSecurityStore } from '../../../store/useSecurityStore';
 import { config } from '../../../app/config';
 import { SUPPORTED_CURRENCIES } from '../../../types';
+import { repository } from '../../../services/api/repository';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -488,7 +489,12 @@ export const ProfileScreen: React.FC = () => {
       <PhotoPickerModal
         visible={showPhotoModal}
         onClose={() => setShowPhotoModal(false)}
-        onSelectPhoto={uri => updateUser({ avatarUrl: uri })}
+        onSelectPhoto={async uri => {
+          updateUser({ avatarUrl: uri });
+          try {
+            await repository.uploadAvatar(uri);
+          } catch {}
+        }}
       />
 
       {/* Pin Setup & Change Modal */}

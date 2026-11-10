@@ -6,6 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createApp = void 0;
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 const index_js_1 = require("./config/index.js");
 const index_js_2 = __importDefault(require("./routes/index.js"));
 const error_middleware_js_1 = require("./middleware/error.middleware.js");
@@ -16,6 +18,15 @@ const createApp = () => {
     app.use((0, cors_1.default)({ origin: index_js_1.config.corsOrigin }));
     app.use(express_1.default.json({ limit: '10mb' }));
     app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
+    // Static uploads directory
+    const uploadsDir = path_1.default.resolve(process.cwd(), 'data', 'uploads');
+    if (!fs_1.default.existsSync(uploadsDir)) {
+        try {
+            fs_1.default.mkdirSync(uploadsDir, { recursive: true });
+        }
+        catch { }
+    }
+    app.use('/uploads', express_1.default.static(uploadsDir));
     // Request logger
     app.use((req, res, next) => {
         const start = Date.now();
