@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useAppStore } from '../../store/useAppStore';
+import { useSecurityStore } from '../../store/useSecurityStore';
 import { BottomTabNavigator } from './BottomTabNavigator';
 import { SplashScreen } from '../../features/auth/screens/SplashScreen';
+import { PinLockScreen } from '../../features/auth/screens/PinLockScreen';
 
 // Auth Screens
 import { LoginScreen } from '../../features/auth/screens/LoginScreen';
@@ -32,21 +35,37 @@ import { NotificationsScreen } from '../../features/notifications/screens/Notifi
 import { SearchScreen } from '../../features/home/screens/SearchScreen';
 import { EditProfileScreen } from '../../features/profile/screens/EditProfileScreen';
 import { SubscriptionScreen } from '../../features/profile/screens/SubscriptionScreen';
+import { notificationService } from '../../services/native/notificationService';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator: React.FC = () => {
   const { isAuthenticated, initializeAuth } = useAuthStore();
   const { loadInitialData } = useAppStore();
+  const { isPinEnabled, isLocked, initializeSecurity, lock } = useSecurityStore();
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     initializeAuth();
     loadInitialData();
-  }, [initializeAuth, loadInitialData]);
+    initializeSecurity();
+    notificationService.requestPermission();
+
+    const sub = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'background') {
+        lock();
+      }
+    });
+    return () => sub.remove();
+  }, [initializeAuth, loadInitialData, initializeSecurity, lock]);
 
   if (showSplash) {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
+
+  // If user is authenticated and mPIN is enabled, block with PIN screen
+  if (isAuthenticated && isPinEnabled && isLocked) {
+    return <PinLockScreen />;
   }
 
   return (

@@ -17,12 +17,14 @@ import { useAppStore } from '../../../store/useAppStore';
 import { AppHeader } from '../../../components/common/AppHeader';
 import { Button } from '../../../components/buttons/Button';
 import { Icon } from '../../../components/common/Icon';
+import { ContactsPickerModal } from '../../../components/modals/ContactsPickerModal';
+import { PhoneContact } from '../../../services/native/contactsService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const AddFriendScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { colors, typography, spacing, borderRadius } = useTheme();
+  const { colors, typography, spacing, borderRadius, shadows } = useTheme();
   const { addFriend } = useAppStore();
 
   const [name, setName] = useState('');
@@ -30,6 +32,13 @@ export const AddFriendScreen: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showContactsModal, setShowContactsModal] = useState(false);
+
+  const handleSelectContact = (contact: PhoneContact) => {
+    setName(contact.name);
+    if (contact.phoneNumber) setPhoneNumber(contact.phoneNumber);
+    if (contact.email) setEmail(contact.email);
+  };
 
   const handleAdd = async () => {
     if (!name.trim()) {
@@ -98,6 +107,37 @@ export const AddFriendScreen: React.FC = () => {
               Share your custom invite link via WhatsApp, SMS, or Slack
             </Text>
           </View>
+        </TouchableOpacity>
+
+        {/* Import from Device Contacts */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => setShowContactsModal(true)}
+          style={[
+            styles.contactsBtn,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.borderSubtle,
+              borderRadius: borderRadius.lg,
+              padding: spacing.md,
+              marginBottom: spacing.xl,
+              borderWidth: 1,
+              ...shadows.soft,
+            },
+          ]}
+        >
+          <View style={[styles.contactsIcon, { backgroundColor: '#E0F2FE' }]}>
+            <Icon name="phone" size={18} color="#0284C7" />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
+              Choose from Device Contacts
+            </Text>
+            <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+              Quickly import name, phone number, and email
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={16} color={colors.textSecondary} />
         </TouchableOpacity>
 
         <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 6 }]}>
@@ -174,6 +214,13 @@ export const AddFriendScreen: React.FC = () => {
 
         <Button title="Save Friend" onPress={handleAdd} loading={loading} />
       </ScrollView>
+
+      {/* Contacts Picker Modal */}
+      <ContactsPickerModal
+        visible={showContactsModal}
+        onClose={() => setShowContactsModal(false)}
+        onSelectContact={handleSelectContact}
+      />
     </View>
   );
 };
@@ -190,6 +237,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   inviteIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  contactsIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,

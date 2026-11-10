@@ -19,6 +19,9 @@ import { Button } from '../../../components/buttons/Button';
 import { CurrencySelector } from '../../../components/inputs/CurrencySelector';
 import { GroupCategory, CurrencyCode, GroupMember } from '../../../types';
 import { Icon, IconName } from '../../../components/common/Icon';
+import { ContactsPickerModal } from '../../../components/modals/ContactsPickerModal';
+import { PhoneContact } from '../../../services/native/contactsService';
+import { locationService } from '../../../services/native/locationService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -36,7 +39,7 @@ export const CreateGroupScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { colors, typography, spacing, borderRadius } = useTheme();
 
-  const { createGroup, friends } = useAppStore();
+  const { createGroup, friends, addFriend } = useAppStore();
   const currentUser = useAuthStore(state => state.currentUser);
 
   const [name, setName] = useState('');
@@ -46,6 +49,31 @@ export const CreateGroupScreen: React.FC = () => {
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showContactsModal, setShowContactsModal] = useState(false);
+
+  const handleDetectLocation = async () => {
+    try {
+      const res = await locationService.detectCountryAndCurrency();
+      setCurrency(res.suggestedCurrency);
+      Alert.alert(
+        'Location Detected',
+        `Country: ${res.countryName}\nCurrency set to ${res.suggestedCurrency} (${res.currencySymbol})`
+      );
+    } catch {}
+  };
+
+  const handleSelectContact = async (contact: PhoneContact) => {
+    try {
+      const newFriend = await addFriend({
+        userId: `usr_${Date.now()}`,
+        name: contact.name,
+        email: contact.email || `${contact.name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
+        phoneNumber: contact.phoneNumber,
+        currency,
+      });
+      setSelectedFriendIds(prev => [...prev, newFriend.id]);
+    } catch {}
+  };
 
   const toggleFriend = (id: string) => {
     setSelectedFriendIds(prev =>
@@ -211,25 +239,53 @@ export const CreateGroupScreen: React.FC = () => {
         </View>
 
         {/* Default Currency */}
-        <Text
-          style={[
-            typography.caption,
-            { color: colors.textSecondary, marginTop: spacing.lg, marginBottom: 6 },
-          ]}
-        >
-          CURRENCY
-        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.lg, marginBottom: 6 }}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>
+            CURRENCY
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleDetectLocation}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: colors.primaryLight,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: borderRadius.full,
+            }}
+          >
+            <Icon name="location" size={12} color={colors.primary} />
+            <Text style={[typography.caption, { color: colors.primary, fontWeight: '700', marginLeft: 4 }]}>
+              Detect from GPS
+            </Text>
+          </TouchableOpacity>
+        </View>
         <CurrencySelector selectedCurrency={currency} onSelect={setCurrency} />
 
         {/* Add Initial Friends */}
-        <Text
-          style={[
-            typography.caption,
-            { color: colors.textSecondary, marginTop: spacing.lg, marginBottom: 8 },
-          ]}
-        >
-          ADD FRIENDS (OPTIONAL)
-        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.lg, marginBottom: 8 }}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>
+            ADD FRIENDS (OPTIONAL)
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setShowContactsModal(true)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: colors.surfaceVariant,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: borderRadius.full,
+            }}
+          >
+            <Icon name="phone" size={12} color={colors.primary} />
+            <Text style={[typography.caption, { color: colors.primary, fontWeight: '700', marginLeft: 4 }]}>
+              + From Contacts
+            </Text>
+          </TouchableOpacity>
+        </View>
         {friends.map(friend => {
           const isSelected = selectedFriendIds.includes(friend.id);
           return (
@@ -277,6 +333,13 @@ export const CreateGroupScreen: React.FC = () => {
           style={{ marginTop: spacing.xl, marginBottom: 30 }}
         />
       </ScrollView>
+
+      {/* Contacts Picker Modal */}
+      <ContactsPickerModal
+        visible={showContactsModal}
+        onClose={() => setShowContactsModal(false)}
+        onSelectContact={handleSelectContact}
+      />
     </View>
   );
 };

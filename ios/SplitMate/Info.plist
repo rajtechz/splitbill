@@ -35,7 +35,17 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>SplitMate uses your location to automatically detect your country and configure your local currency.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>SplitMate needs camera access to capture receipts and update your profile photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SplitMate needs access to your photo library to select profile photos and attach bill receipts.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>SplitMate needs permission to save receipts and financial statements to your photos.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>SplitMate accesses your contacts to make it easy to add friends and split group expenses.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>SplitMate uses Face ID and biometric authentication to quickly and securely unlock your expense ledger.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
@@ -55,6 +65,10 @@
 			</array>
 		</dict>
 	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

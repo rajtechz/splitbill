@@ -17,6 +17,10 @@ import { Avatar } from '../../../components/avatars/Avatar';
 import { Icon } from '../../../components/common/Icon';
 import { ConfirmationModal } from '../../../components/modals/ConfirmationModal';
 import { BackendSettingsModal } from '../../../components/modals/BackendSettingsModal';
+import { PhotoPickerModal } from '../../../components/modals/PhotoPickerModal';
+import { PinSetupModal } from '../../../components/modals/PinSetupModal';
+import { notificationService } from '../../../services/native/notificationService';
+import { useSecurityStore } from '../../../store/useSecurityStore';
 import { config } from '../../../app/config';
 import { SUPPORTED_CURRENCIES } from '../../../types';
 
@@ -25,11 +29,32 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { colors, typography, spacing, borderRadius, shadows, setMode, isDark } = useTheme();
-  const { currentUser, logout, isPro, toggleProDev } = useAuthStore();
+  const { currentUser, logout, isPro, toggleProDev, updateUser } = useAuthStore();
+  const { isPinEnabled, disablePin, isBiometricsEnabled, toggleBiometrics } = useSecurityStore();
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showBackendModal, setShowBackendModal] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+
+  React.useEffect(() => {
+    notificationService.isEnabled().then(setPushEnabled);
+  }, []);
+
+  const handleTogglePush = async (val: boolean) => {
+    if (val) {
+      const granted = await notificationService.requestPermission();
+      if (granted) {
+        setPushEnabled(true);
+      } else {
+        setPushEnabled(false);
+      }
+    } else {
+      setPushEnabled(false);
+      await notificationService.savePreference(false);
+    }
+  };
 
   const handleLogout = async () => {
     setShowLogoutModal(false);
@@ -60,11 +85,34 @@ export const ProfileScreen: React.FC = () => {
           ]}
         >
           <View style={styles.profileRow}>
-            <Avatar
-              name={currentUser?.name || 'Alex Johnson'}
-              url={currentUser?.avatarUrl}
-              size={64}
-            />
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setShowPhotoModal(true)}
+              style={{ position: 'relative' }}
+            >
+              <Avatar
+                name={currentUser?.name || 'Alex Johnson'}
+                url={currentUser?.avatarUrl}
+                size={64}
+              />
+              <View
+                style={{
+                  position: 'absolute',
+                  bottom: -2,
+                  right: -2,
+                  backgroundColor: colors.primary,
+                  width: 22,
+                  height: 22,
+                  borderRadius: 11,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 2,
+                  borderColor: '#FFFFFF',
+                }}
+              >
+                <Icon name="camera" size={12} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
             <View style={{ flex: 1, marginLeft: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text style={[typography.h3, { color: colors.textPrimary }]}>
@@ -183,7 +231,7 @@ export const ProfileScreen: React.FC = () => {
             </View>
             <Switch
               value={pushEnabled}
-              onValueChange={setPushEnabled}
+              onValueChange={handleTogglePush}
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor="#FFFFFF"
             />
@@ -241,6 +289,81 @@ export const ProfileScreen: React.FC = () => {
               </Text>
             </View>
           </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+
+          {/* 4-Digit mPIN Protection */}
+          <View style={styles.settingRow}>
+            <View style={[styles.settingIcon, { backgroundColor: '#E0F2FE' }]}>
+              <Icon name="lock" size={18} color="#0284C7" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
+                App Lock (4-Digit mPIN)
+              </Text>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                Require 4-digit security PIN to unlock app
+              </Text>
+            </View>
+            <Switch
+              value={isPinEnabled}
+              onValueChange={val => {
+                if (val) {
+                  setShowPinModal(true);
+                } else {
+                  disablePin();
+                }
+              }}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
+          {/* Fingerprint / Biometric Unlock */}
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+          <View style={styles.settingRow}>
+            <View style={[styles.settingIcon, { backgroundColor: '#DCFCE7' }]}>
+              <Icon name="fingerprint" size={18} color="#15803D" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
+                Fingerprint / Biometric Unlock
+              </Text>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                Open app with fingerprint or 4-digit mPIN
+              </Text>
+            </View>
+            <Switch
+              value={isBiometricsEnabled}
+              onValueChange={val => toggleBiometrics(val)}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
+          {isPinEnabled && (
+            <>
+              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setShowPinModal(true)}
+                style={styles.settingRow}
+              >
+                <View style={[styles.settingIcon, { backgroundColor: colors.surfaceVariant }]}>
+                  <Icon name="edit" size={16} color={colors.textPrimary} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
+                    Change 4-Digit mPIN
+                  </Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                    Update your security PIN (Default: 1234)
+                  </Text>
+                </View>
+                <Icon name="chevron-right" size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </>
+          )}
 
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
@@ -359,6 +482,19 @@ export const ProfileScreen: React.FC = () => {
       <BackendSettingsModal
         visible={showBackendModal}
         onClose={() => setShowBackendModal(false)}
+      />
+
+      {/* Photo Picker Modal */}
+      <PhotoPickerModal
+        visible={showPhotoModal}
+        onClose={() => setShowPhotoModal(false)}
+        onSelectPhoto={uri => updateUser({ avatarUrl: uri })}
+      />
+
+      {/* Pin Setup & Change Modal */}
+      <PinSetupModal
+        visible={showPinModal}
+        onClose={() => setShowPinModal(false)}
       />
     </View>
   );

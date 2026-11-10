@@ -42,6 +42,13 @@ export type IconName =
   | 'user-plus'
   | 'crown'
   | 'sparkles'
+  | 'camera'
+  | 'location'
+  | 'image'
+  | 'phone'
+  | 'lock'
+  | 'backspace'
+  | 'fingerprint'
   | 'shield';
 
 interface IconProps {
@@ -279,6 +286,62 @@ export const Icon: React.FC<IconProps> = ({ name, size = 24, color = '#176B50' }
       return (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
           <Path d="M12 2L14.4 7.2L21.6 9.6L14.4 12L12 19.2L9.6 12L2.4 9.6L9.6 7.2L12 2Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'camera':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <Circle cx="12" cy="13" r="4" stroke={color} strokeWidth="2" />
+        </Svg>
+      );
+    case 'location':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <Circle cx="12" cy="10" r="3" stroke={color} strokeWidth="2" />
+        </Svg>
+      );
+    case 'image':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke={color} strokeWidth="2" />
+          <Circle cx="8.5" cy="8.5" r="1.5" fill={color} />
+          <Path d="M21 15l-5-5L5 21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'phone':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'lock':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke={color} strokeWidth="2" />
+          <Path d="M7 11V7a5 5 0 0 1 10 0v4" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'backspace':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M18 9l-6 6M12 9l6 6" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'fingerprint':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M14 13.12c0 2.38 0 6.38-1 8.88" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M17.29 21.02c.12-.6.43-2.3.5-3.02" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M2 12a10 10 0 0 1 18-6" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M2 16h.01" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M21.8 16c.2-2 .131-5.354 0-6" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M8.65 22c.21-.66.45-1.32.57-2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <Path d="M9 6.8a6 6 0 0 1 9 5.2v2" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
       );
     default:
