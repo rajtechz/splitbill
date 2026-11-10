@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme';
 import { formatMoney } from '../../utils/money';
 import { CurrencyCode } from '../../types';
@@ -11,6 +11,9 @@ interface BalanceCardProps {
   youAreOwed: number;
   currency?: CurrencyCode;
   style?: ViewStyle;
+  onPressOwe?: () => void;
+  onPressOwed?: () => void;
+  onPressTotal?: () => void;
 }
 
 export const BalanceCard: React.FC<BalanceCardProps> = ({
@@ -19,6 +22,9 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
   youAreOwed,
   currency = 'INR',
   style,
+  onPressOwe,
+  onPressOwed,
+  onPressTotal,
 }) => {
   const { colors, typography, spacing, borderRadius, shadows } = useTheme();
 
@@ -39,84 +45,116 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
         style,
       ]}
     >
-      <View style={styles.topRow}>
-        <Text style={[typography.caption, { color: colors.textSecondary }]}>TOTAL NET BALANCE</Text>
-        <View
-          style={[
-            styles.badge,
-            {
-              backgroundColor: isNetZero
-                ? colors.surfaceVariant
-                : isNetPositive
-                ? colors.successLight
-                : colors.dangerLight,
-            },
-          ]}
-        >
-          <Text
+      <TouchableOpacity
+        activeOpacity={onPressTotal ? 0.7 : 1}
+        disabled={!onPressTotal}
+        onPress={onPressTotal}
+      >
+        <View style={styles.topRow}>
+          <Text style={[typography.caption, { color: colors.textSecondary }]}>TOTAL NET BALANCE</Text>
+          <View
             style={[
-              typography.caption,
+              styles.badge,
               {
-                color: isNetZero
-                  ? colors.textSecondary
+                backgroundColor: isNetZero
+                  ? colors.surfaceVariant
                   : isNetPositive
-                  ? colors.success
-                  : colors.danger,
-                fontWeight: '600',
+                  ? colors.successLight
+                  : colors.dangerLight,
               },
             ]}
           >
-            {isNetZero ? 'All settled' : isNetPositive ? 'You are owed' : 'You owe'}
-          </Text>
+            <Text
+              style={[
+                typography.caption,
+                {
+                  color: isNetZero
+                    ? colors.textSecondary
+                    : isNetPositive
+                    ? colors.success
+                    : colors.danger,
+                  fontWeight: '600',
+                },
+              ]}
+            >
+              {isNetZero ? 'All settled' : isNetPositive ? 'You are owed' : 'You owe'}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      <Text
-        style={[
-          typography.amountLarge,
-          {
-            color: isNetZero ? colors.textPrimary : isNetPositive ? colors.success : colors.danger,
-            marginVertical: spacing.xs,
-          },
-        ]}
-      >
-        {isNetZero ? formatMoney(0, currency) : formatMoney(totalBalance, currency, { showSign: true })}
-      </Text>
+        <Text
+          style={[
+            typography.amountLarge,
+            {
+              color: isNetZero ? colors.textPrimary : isNetPositive ? colors.success : colors.danger,
+              marginVertical: spacing.xs,
+            },
+          ]}
+        >
+          {isNetZero ? formatMoney(0, currency) : formatMoney(totalBalance, currency, { showSign: true })}
+        </Text>
+      </TouchableOpacity>
 
       <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
       <View style={styles.summaryRow}>
         {/* You owe */}
-        <View style={styles.col}>
+        <TouchableOpacity
+          activeOpacity={onPressOwe ? 0.7 : 1}
+          disabled={!onPressOwe}
+          onPress={onPressOwe}
+          style={[
+            styles.col,
+            onPressOwe && {
+              backgroundColor: colors.surfaceVariant,
+              padding: 8,
+              borderRadius: borderRadius.md,
+            },
+          ]}
+        >
           <View style={styles.labelWithIcon}>
             <View style={[styles.iconDot, { backgroundColor: colors.dangerLight }]}>
               <Icon name="arrow-up-right" size={14} color={colors.danger} />
             </View>
-            <Text style={[typography.caption, { color: colors.textSecondary, marginLeft: 6 }]}>
+            <Text style={[typography.caption, { color: colors.textSecondary, marginLeft: 6, flex: 1 }]}>
               You owe
             </Text>
+            {onPressOwe && <Icon name="chevron-right" size={14} color={colors.textSecondary} />}
           </View>
           <Text style={[typography.amountMedium, { color: colors.danger, marginTop: 4 }]}>
             {formatMoney(youOwe, currency)}
           </Text>
-        </View>
+        </TouchableOpacity>
 
         <View style={[styles.verticalDivider, { backgroundColor: colors.divider }]} />
 
         {/* You are owed */}
-        <View style={styles.col}>
+        <TouchableOpacity
+          activeOpacity={onPressOwed ? 0.7 : 1}
+          disabled={!onPressOwed}
+          onPress={onPressOwed}
+          style={[
+            styles.col,
+            onPressOwed && {
+              backgroundColor: colors.surfaceVariant,
+              padding: 8,
+              borderRadius: borderRadius.md,
+            },
+          ]}
+        >
           <View style={styles.labelWithIcon}>
             <View style={[styles.iconDot, { backgroundColor: colors.successLight }]}>
               <Icon name="arrow-down-left" size={14} color={colors.success} />
             </View>
-            <Text style={[typography.caption, { color: colors.textSecondary, marginLeft: 6 }]}>
+            <Text style={[typography.caption, { color: colors.textSecondary, marginLeft: 6, flex: 1 }]}>
               You are owed
             </Text>
+            {onPressOwed && <Icon name="chevron-right" size={14} color={colors.textSecondary} />}
           </View>
           <Text style={[typography.amountMedium, { color: colors.success, marginTop: 4 }]}>
             {formatMoney(youAreOwed, currency)}
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
     </View>
   );

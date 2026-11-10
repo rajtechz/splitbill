@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   Animated,
   Dimensions,
@@ -133,9 +134,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
             },
           ]}
         >
-          <View style={[styles.logoCircle, { backgroundColor: primaryBrandColor }]}>
-            <Icon name="shield" size={48} color="#FFFFFF" />
-          </View>
+          <Image
+            source={require('../../../../assets/icons/app_icon.png')}
+            style={styles.logoImage}
+            resizeMode="cover"
+          />
         </Animated.View>
 
         {/* Animated App Name & Slogan */}
@@ -203,9 +206,9 @@ const styles = StyleSheet.create({
     marginTop: -40,
   },
   logoWrapper: {
-    width: 108,
-    height: 108,
-    borderRadius: 54,
+    width: 104,
+    height: 104,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     shadowOffset: { width: 0, height: 12 },
@@ -213,12 +216,10 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 10,
   },
-  logoCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoImage: {
+    width: 104,
+    height: 104,
+    borderRadius: 24,
   },
   textBlock: {
     alignItems: 'center',

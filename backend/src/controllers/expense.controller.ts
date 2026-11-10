@@ -1,0 +1,155 @@
+import { Response } from 'express';
+import { AuthenticatedRequest, Expense, ExpenseComment } from '../types/index.js';
+import { store } from '../data/store.js';
+import { sendSuccess, sendError } from '../utils/response.js';
+import { recalculateBalances } from '../services/balance.service.js';
+
+export const getExpenses = async (req: AuthenticatedRequest, res: Response) => {
+  const { groupId } = req.query;
+  const expenses = store.getExpenses(groupId as string | undefined);
+  return sendSuccess(res, expenses);
+};
+
+export const getExpenseById = async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const expense = store.findExpenseById(id);
+
+  if (!expense) {
+    return sendError(res, `Expense ${id} not found`, 404, 'EXPENSE_NOT_FOUND');
+  }
+
+  return sendSuccess(res, expense);
+};
+
+export const createExpense = async (req: AuthenticatedRequest, res: Response) => {
+  const currentUserId = req.user?.id || 'usr_me';
+  const data = req.body;
+
+  if (!data.title || !data.totalAmount) {
+    return sendError(res, 'Expense title and total amount are required', 400, 'VALIDATION_ERROR');
+  }
+
+  const group = data.groupId ? store.findGroupById(data.groupId) : undefined;
+
+  const newExpense: Expense = {
+    id: `exp_${Date.now()}`,
+    title: data.title.trim(),
+    totalAmount: Number(data.totalAmount),
+    currency: data.currency || group?.currency || req.user?.defaultCurrency || 'INR',
+    date: data.date || new Date().toISOString(),
+    category: data.category || 'Other',
+    groupId: data.groupId || null,
+    groupName: data.groupName || group?.name,
+    notes: data.notes,
+    receiptUri: data.receiptUri,
+    createdBy: currentUserId,
+    createdAt: new Date().toISOString(),
+    splitMethod: data.splitMethod || 'EQUAL',
+    participants: data.participants || [],
+    commentsCount: 0,
+    comments: [],
+  };
+
+  store.createExpense(newExpense);
+
+  // Recalculate group and friend balances
+  recalculateBalances(currentUserId);
+
+  // Log activity
+  store.createActivity({
+    id: `act_${Date.now()}`,
+    type: 'expense_created',
+    actorId: currentUserId,
+    actorName: req.user?.name || 'Alex Johnson',
+    title: `Added "${newExpense.title}"`,
+    description: `Total: ${newExpense.currency} ${newExpense.totalAmount.toLocaleString()}`,
+    timestamp: new Date().toISOString(),
+    amount: newExpense.totalAmount,
+    currency: newExpense.currency,
+    groupId: newExpense.groupId || undefined,
+    expenseId: newExpense.id,
+  });
+
+  return sendSuccess(res, newExpense, 'Expense created successfully', 201);
+};
+
+export const updateExpense = async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const updates = req.body;
+
+  const updated = store.updateExpense(id, updates);
+  if (!updated) {
+    return sendError(res, `Expense ${id} not found`, 404, 'EXPENSE_NOT_FOUND');
+  }
+
+  recalculateBalances(req.user?.id || 'usr_me');
+
+  // Log activity
+  store.createActivity({
+    id: `act_${Date.now()}`,
+    type: 'expense_updated',
+    actorId: req.user?.id || 'usr_me',
+    actorName: req.user?.name || 'Alex Johnson',
+    title: `Updated "${updated.title}"`,
+    description: `Total: ${updated.currency} ${updated.totalAmount.toLocaleString()}`,
+    timestamp: new Date().toISOString(),
+    amount: updated.totalAmount,
+    currency: updated.currency,
+    groupId: updated.groupId || undefined,
+    expenseId: id,
+  });
+
+  return sendSuccess(res, updated, 'Expense updated successfully');
+};
+
+export const deleteExpense = async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const target = store.findExpenseById(id);
+
+  if (!target) {
+    return sendError(res, `Expense ${id} not found`, 404, 'EXPENSE_NOT_FOUND');
+  }
+
+  store.deleteExpense(id);
+  recalculateBalances(req.user?.id || 'usr_me');
+
+  // Log activity
+  store.createActivity({
+    id: `act_${Date.now()}`,
+    type: 'expense_deleted',
+    actorId: req.user?.id || 'usr_me',
+    actorName: req.user?.name || 'Alex Johnson',
+    title: `Deleted "${target.title}"`,
+    description: 'Expense was removed',
+    timestamp: new Date().toISOString(),
+  });
+
+  return sendSuccess(res, { deleted: true }, 'Expense deleted successfully');
+};
+
+export const addComment = async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params;
+  const { text } = req.body;
+
+  if (!text || !text.trim()) {
+    return sendError(res, 'Comment text is required', 400, 'VALIDATION_ERROR');
+  }
+
+  const comment: ExpenseComment = {
+    id: `c_${Date.now()}`,
+    expenseId: id,
+    userId: req.user?.id || 'usr_me',
+    userName: req.user?.name || 'Alex Johnson',
+    userAvatar: req.user?.avatarUrl,
+    text: text.trim(),
+    createdAt: new Date().toISOString(),
+  };
+
+  const updated = store.addCommentToExpense(id, comment);
+  if (!updated) {
+    return sendError(res, `Expense ${id} not found`, 404, 'EXPENSE_NOT_FOUND');
+  }
+
+  return sendSuccess(res, updated, 'Comment added successfully');
+};
+

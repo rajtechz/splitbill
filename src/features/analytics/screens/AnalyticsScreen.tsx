@@ -17,6 +17,9 @@ import { CategoryBreakdown } from '../../../components/charts/CategoryPieChart';
 import { formatMoney } from '../../../utils/money';
 import { ExpenseCategory } from '../../../types';
 import { Icon } from '../../../components/common/Icon';
+import { useAuthStore } from '../../../store/useAuthStore';
+import { ProPaywallModal } from '../../../components/modals/ProPaywallModal';
+import { Alert } from 'react-native';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -37,8 +40,21 @@ export const AnalyticsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { colors, typography, spacing, borderRadius, shadows } = useTheme();
   const { expenses, groups } = useAppStore();
+  const isPro = useAuthStore(state => state.isPro);
 
   const [timeframe, setTimeframe] = useState<'monthly' | 'weekly'>('monthly');
+  const [showProModal, setShowProModal] = useState(false);
+
+  const handleExport = () => {
+    if (!isPro) {
+      setShowProModal(true);
+      return;
+    }
+    Alert.alert(
+      '📊 Spending Report Exported',
+      `Exported ${expenses.length} itemized transactions to SplitMate_Expenses_2026.csv. Ready for tax filings and accounting!`
+    );
+  };
 
   const totalSpending = useMemo(() => {
     return expenses.reduce((sum, e) => sum + e.totalAmount, 0);
@@ -256,7 +272,52 @@ export const AnalyticsScreen: React.FC = () => {
             </View>
           ))}
         </View>
+
+        {/* Pro Export Card */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleExport}
+          style={[
+            styles.exportCard,
+            {
+              backgroundColor: isPro ? '#E7F5EF' : '#FFF9E6',
+              borderColor: isPro ? '#239B68' : '#D4AF37',
+              borderRadius: borderRadius.xl,
+              padding: spacing.md,
+              marginTop: spacing.lg,
+              borderWidth: 1,
+            },
+          ]}
+        >
+          <View style={[styles.exportIconBox, { backgroundColor: isPro ? '#C8EAD9' : '#FFF0C2' }]}>
+            <Icon name="share" size={20} color={isPro ? '#176B50' : '#8F6B00'} />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={[typography.titleMedium, { color: isPro ? '#176B50' : '#8F6B00' }]}>
+                Export to Excel & PDF
+              </Text>
+              <View style={[styles.proBadgeSmall, { backgroundColor: isPro ? '#239B68' : '#D4AF37' }]}>
+                <Text style={styles.proBadgeSmallText}>PRO</Text>
+              </View>
+            </View>
+            <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+              {isPro
+                ? 'Tap to export complete transaction records and category summaries'
+                : 'Unlock financial exports, tax reports and CSV data with Pro'}
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={18} color={colors.textSecondary} />
+        </TouchableOpacity>
       </ScrollView>
+
+      {/* Pro Paywall Modal */}
+      <ProPaywallModal
+        visible={showProModal}
+        feature="export_csv"
+        onClose={() => setShowProModal(false)}
+        onNavigateToPlans={() => navigation.navigate('Subscription')}
+      />
     </View>
   );
 };
@@ -303,6 +364,28 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+  },
+  exportCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  exportIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proBadgeSmall: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    marginLeft: 6,
+  },
+  proBadgeSmallText: {
+    color: '#122E24',
+    fontSize: 9,
+    fontWeight: '800',
   },
 });
 

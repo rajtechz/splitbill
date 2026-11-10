@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const settlement_controller_js_1 = require("../controllers/settlement.controller.js");
+const auth_middleware_js_1 = require("../middleware/auth.middleware.js");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_js_1.requireAuth);
+router.get('/', settlement_controller_js_1.getSettlements);
+router.post('/', settlement_controller_js_1.recordSettlement);
+router.post('/:id/confirm', settlement_controller_js_1.confirmSettlement);
+router.post('/:id/reject', settlement_controller_js_1.rejectSettlement);
+exports.default = router;

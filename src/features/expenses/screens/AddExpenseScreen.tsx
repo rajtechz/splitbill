@@ -21,11 +21,13 @@ import { CurrencySelector } from '../../../components/inputs/CurrencySelector';
 import { SplitMethodSelector } from '../../../components/inputs/SplitMethodSelector';
 import { Avatar } from '../../../components/avatars/Avatar';
 import { Icon, IconName } from '../../../components/common/Icon';
+import { ProPaywallModal } from '../../../components/modals/ProPaywallModal';
 import {
   ExpenseCategory,
   SplitMethod,
   CurrencyCode,
   ExpenseParticipant,
+  ProFeature,
 } from '../../../types';
 import { formatMoney } from '../../../utils/money';
 import {
@@ -60,6 +62,27 @@ export const AddExpenseScreen: React.FC = () => {
   const { preselectedGroupId, preselectedFriendId } = route.params || {};
   const { groups, friends, createExpense } = useAppStore();
   const currentUser = useAuthStore(state => state.currentUser);
+  const isPro = useAuthStore(state => state.isPro);
+
+  const [showProModal, setShowProModal] = useState(false);
+  const [proTriggerFeature, setProTriggerFeature] = useState<ProFeature>('receipt_ocr');
+
+  const handleScanReceipt = () => {
+    if (!isPro) {
+      setProTriggerFeature('receipt_ocr');
+      setShowProModal(true);
+      return;
+    }
+    // Pro member simulated AI OCR extraction
+    setTitle('Olive Garden Dinner & Drinks');
+    setAmountStr('2450');
+    setCategory('Food');
+    setNotes('Scanned via SplitMate Pro AI OCR (Tax & Service included)');
+    Alert.alert(
+      '🧾 Receipt Scanned Successfully',
+      'AI OCR extracted ₹2,450 for Olive Garden Dinner. Amount and details auto-filled!'
+    );
+  };
 
   // Form states
   const [title, setTitle] = useState('');
@@ -294,6 +317,41 @@ export const AddExpenseScreen: React.FC = () => {
             },
           ]}
         />
+
+        {/* AI Receipt Scanner Banner (Pro Feature) */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleScanReceipt}
+          style={[
+            styles.ocrBanner,
+            {
+              backgroundColor: isPro ? '#E7F5EF' : '#FFF9E6',
+              borderColor: isPro ? '#239B68' : '#D4AF37',
+              borderRadius: borderRadius.md,
+              marginTop: 12,
+            },
+          ]}
+        >
+          <View style={[styles.ocrIconWrap, { backgroundColor: isPro ? '#C8EAD9' : '#FFF0C2' }]}>
+            <Icon name="receipt" size={18} color={isPro ? '#176B50' : '#8F6B00'} />
+          </View>
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={[typography.titleMedium, { color: isPro ? '#176B50' : '#8F6B00', fontSize: 13 }]}>
+                Scan Receipt with AI OCR
+              </Text>
+              <View style={[styles.proBadgeSmall, { backgroundColor: isPro ? '#239B68' : '#D4AF37' }]}>
+                <Text style={styles.proBadgeSmallText}>PRO</Text>
+              </View>
+            </View>
+            <Text style={[typography.caption, { color: colors.textSecondary, fontSize: 11, marginTop: 1 }]}>
+              {isPro
+                ? 'Tap to scan bill and auto-extract totals and items'
+                : 'Auto-scan receipts and extract amounts with SplitMate Pro'}
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={16} color={colors.textSecondary} />
+        </TouchableOpacity>
 
         {/* Amount Input */}
         <Text
@@ -793,6 +851,14 @@ export const AddExpenseScreen: React.FC = () => {
           style={{ marginTop: spacing.xl, marginBottom: 40 }}
         />
       </ScrollView>
+
+      {/* Pro Paywall Modal */}
+      <ProPaywallModal
+        visible={showProModal}
+        feature={proTriggerFeature}
+        onClose={() => setShowProModal(false)}
+        onNavigateToPlans={() => navigation.navigate('Subscription')}
+      />
     </View>
   );
 };
@@ -808,6 +874,30 @@ const styles = StyleSheet.create({
     height: 48,
     borderWidth: 1,
     paddingHorizontal: 12,
+  },
+  ocrBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderWidth: 1,
+  },
+  ocrIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proBadgeSmall: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    marginLeft: 6,
+  },
+  proBadgeSmallText: {
+    color: '#122E24',
+    fontSize: 9,
+    fontWeight: '800',
   },
   catPill: {
     flexDirection: 'row',

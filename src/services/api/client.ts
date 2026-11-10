@@ -130,7 +130,16 @@ export const formatApiError = (error: any): ApiErrorResponse => {
       errors: data.errors,
     };
   }
-  if (error.request) {
+  if (
+    error.code === 'ECONNABORTED' ||
+    error.code === 'ERR_NETWORK' ||
+    error.code === 'ETIMEDOUT' ||
+    error.code === 'ECONNREFUSED' ||
+    error.message?.includes('timeout') ||
+    error.message?.includes('Network Error') ||
+    error.message?.includes('network error') ||
+    error.request
+  ) {
     return {
       message: 'Network error. Please check your internet connection or server status.',
       code: 'NETWORK_ERROR',

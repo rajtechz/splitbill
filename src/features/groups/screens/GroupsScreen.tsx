@@ -35,10 +35,20 @@ const CATEGORIES: ('All' | GroupCategory)[] = [
 export const GroupsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { colors, typography, spacing, borderRadius } = useTheme();
-  const { groups, isSyncing, refreshAll } = useAppStore();
+  const { groups, refreshAll } = useAppStore();
 
   const [selectedCategory, setSelectedCategory] = useState<'All' | GroupCategory>('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshAll();
+    } finally {
+      setTimeout(() => setRefreshing(false), 350);
+    }
+  };
 
   const filteredGroups = groups.filter(g => {
     const matchesCategory = selectedCategory === 'All' || g.category === selectedCategory;
@@ -122,8 +132,8 @@ export const GroupsScreen: React.FC = () => {
         contentContainerStyle={[styles.content, { paddingBottom: 100 }]}
         refreshControl={
           <RefreshControl
-            refreshing={isSyncing}
-            onRefresh={refreshAll}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             colors={[colors.primary]}
             tintColor={colors.primary}
           />

@@ -24,9 +24,19 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export const FriendsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { colors, typography, spacing, borderRadius } = useTheme();
-  const { friends, isSyncing, refreshAll } = useAppStore();
+  const { friends, refreshAll } = useAppStore();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshAll();
+    } finally {
+      setTimeout(() => setRefreshing(false), 350);
+    }
+  };
 
   const filteredFriends = friends.filter(
     f =>
@@ -79,8 +89,8 @@ export const FriendsScreen: React.FC = () => {
         contentContainerStyle={[styles.content, { paddingBottom: 100 }]}
         refreshControl={
           <RefreshControl
-            refreshing={isSyncing}
-            onRefresh={refreshAll}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             colors={[colors.primary]}
             tintColor={colors.primary}
           />

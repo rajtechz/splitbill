@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  Image,
   TextInput,
   TouchableOpacity,
   ScrollView,
@@ -50,9 +51,11 @@ export const LoginScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* Brand Header */}
         <View style={styles.brandContainer}>
-          <View style={[styles.brandLogo, { backgroundColor: colors.primary }]}>
-            <Icon name="shield" size={32} color="#FFFFFF" />
-          </View>
+          <Image
+            source={require('../../../../assets/icons/app_icon.png')}
+            style={styles.brandLogoImage}
+            resizeMode="cover"
+          />
           <Text style={[typography.h1, { color: colors.textPrimary, marginTop: 16 }]}>
             SplitMate
           </Text>
@@ -206,12 +209,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  brandLogo: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+  brandLogoImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
+    shadowColor: '#176B50',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
   },
   tabBar: {
     flexDirection: 'row',

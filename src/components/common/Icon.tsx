@@ -40,6 +40,8 @@ export type IconName =
   | 'medical'
   | 'money'
   | 'user-plus'
+  | 'crown'
+  | 'sparkles'
   | 'shield';
 
 interface IconProps {
@@ -265,6 +267,18 @@ export const Icon: React.FC<IconProps> = ({ name, size = 24, color = '#176B50' }
       return (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
           <Path d="M12 22S20 18 20 12V5L12 2L4 5V12C4 18 12 22 12 22Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'crown':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path d="M2 19H22M2 5L6 15L12 9L18 15L22 5L20 19H4L2 5Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </Svg>
+      );
+    case 'sparkles':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path d="M12 2L14.4 7.2L21.6 9.6L14.4 12L12 19.2L9.6 12L2.4 9.6L9.6 7.2L12 2Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </Svg>
       );
     default:

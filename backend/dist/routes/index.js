@@ -1,0 +1,26 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_routes_js_1 = __importDefault(require("./auth.routes.js"));
+const user_routes_js_1 = __importDefault(require("./user.routes.js"));
+const group_routes_js_1 = __importDefault(require("./group.routes.js"));
+const friend_routes_js_1 = __importDefault(require("./friend.routes.js"));
+const expense_routes_js_1 = __importDefault(require("./expense.routes.js"));
+const settlement_routes_js_1 = __importDefault(require("./settlement.routes.js"));
+const activity_routes_js_1 = __importDefault(require("./activity.routes.js"));
+const notification_routes_js_1 = __importDefault(require("./notification.routes.js"));
+const search_routes_js_1 = __importDefault(require("./search.routes.js"));
+const apiRouter = (0, express_1.Router)();
+apiRouter.use('/auth', auth_routes_js_1.default);
+apiRouter.use('/users', user_routes_js_1.default);
+apiRouter.use('/groups', group_routes_js_1.default);
+apiRouter.use('/friends', friend_routes_js_1.default);
+apiRouter.use('/expenses', expense_routes_js_1.default);
+apiRouter.use('/settlements', settlement_routes_js_1.default);
+apiRouter.use('/activities', activity_routes_js_1.default);
+apiRouter.use('/notifications', notification_routes_js_1.default);
+apiRouter.use('/search', search_routes_js_1.default);
+exports.default = apiRouter;

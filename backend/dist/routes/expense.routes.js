@@ -1,0 +1,14 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const expense_controller_js_1 = require("../controllers/expense.controller.js");
+const auth_middleware_js_1 = require("../middleware/auth.middleware.js");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_js_1.requireAuth);
+router.get('/', expense_controller_js_1.getExpenses);
+router.post('/', expense_controller_js_1.createExpense);
+router.get('/:id', expense_controller_js_1.getExpenseById);
+router.patch('/:id', expense_controller_js_1.updateExpense);
+router.delete('/:id', expense_controller_js_1.deleteExpense);
+router.post('/:id/comments', expense_controller_js_1.addComment);
+exports.default = router;

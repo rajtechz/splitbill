@@ -25,7 +25,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { colors, typography, spacing, borderRadius, shadows, setMode, isDark } = useTheme();
-  const { currentUser, logout } = useAuthStore();
+  const { currentUser, logout, isPro, toggleProDev } = useAuthStore();
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -66,9 +66,16 @@ export const ProfileScreen: React.FC = () => {
               size={64}
             />
             <View style={{ flex: 1, marginLeft: 16 }}>
-              <Text style={[typography.h3, { color: colors.textPrimary }]}>
-                {currentUser?.name || 'Alex Johnson'}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={[typography.h3, { color: colors.textPrimary }]}>
+                  {currentUser?.name || 'Alex Johnson'}
+                </Text>
+                {isPro ? (
+                  <View style={styles.proNamePill}>
+                    <Text style={styles.proNamePillText}>PRO</Text>
+                  </View>
+                ) : null}
+              </View>
               <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
                 {currentUser?.email || 'alex.johnson@example.com'}
               </Text>
@@ -94,6 +101,38 @@ export const ProfileScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* SplitMate Pro Banner */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('Subscription')}
+          style={[
+            styles.proBannerCard,
+            {
+              backgroundColor: isPro ? '#0E3A2B' : '#122E24',
+              borderRadius: borderRadius.lg,
+              marginTop: 14,
+              ...shadows.soft,
+            },
+          ]}
+        >
+          <View style={styles.proBannerIcon}>
+            <Icon name="crown" size={24} color="#D4AF37" />
+          </View>
+          <View style={{ flex: 1, marginLeft: 14 }}>
+            <Text style={[typography.titleMedium, { color: '#FFFFFF' }]}>
+              {isPro ? 'SplitMate Pro Active' : 'Upgrade to SplitMate Pro'}
+            </Text>
+            <Text style={[typography.caption, { color: '#B8E7D3', marginTop: 2 }]}>
+              {isPro ? 'Unlimited OCR Scans, CSV Export & Pro Debt Minimizer' : '7-Day Free Trial • Save 37% with Annual'}
+            </Text>
+          </View>
+          <View style={[styles.proActionBadge, { backgroundColor: isPro ? '#239B68' : '#D4AF37' }]}>
+            <Text style={[styles.proActionBadgeText, { color: isPro ? '#FFFFFF' : '#122E24' }]}>
+              {isPro ? 'Active' : 'Upgrade'}
+            </Text>
+          </View>
+        </TouchableOpacity>
 
         {/* Preferences Section */}
         <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 24, marginBottom: 8 }]}>
@@ -237,6 +276,42 @@ export const ProfileScreen: React.FC = () => {
               </Text>
             </View>
           </TouchableOpacity>
+
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+
+          {/* Dev Pro Toggle */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={toggleProDev}
+            style={styles.settingRow}
+          >
+            <View style={[styles.settingIcon, { backgroundColor: '#FFF4D4' }]}>
+              <Icon name="crown" size={18} color="#D4AF37" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
+                Pro Membership (Dev Switch)
+              </Text>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                {isPro ? 'Pro Active • Tap to test Free paywalls' : 'Free Tier • Tap to activate Pro instantly'}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.currencyBadge,
+                { backgroundColor: isPro ? '#239B68' : colors.surfaceVariant },
+              ]}
+            >
+              <Text
+                style={[
+                  typography.caption,
+                  { color: isPro ? '#FFFFFF' : colors.textPrimary, fontWeight: '700' },
+                ]}
+              >
+                {isPro ? 'Pro Active' : 'Free Mode'}
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Logout Button */}
@@ -340,5 +415,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 14,
     borderWidth: 1,
+  },
+  proBannerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  proBannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proActionBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  proActionBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  proNamePill: {
+    backgroundColor: '#D4AF37',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  proNamePillText: {
+    color: '#122E24',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 });

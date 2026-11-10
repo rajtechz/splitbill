@@ -28,7 +28,7 @@ export const config: AppConfig = {
   appName: 'SplitMate',
   appVersion: '1.0.0',
   apiBaseUrl: getDefaultApiBaseUrl(),
-  apiTimeoutMs: 15000,
+  apiTimeoutMs: 5000,
   environment: __DEV__ ? 'development' : 'production',
   useMockApi: true, // Default to true so app works smoothly offline; toggle to false when your backend is running
 };

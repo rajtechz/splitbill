@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -32,11 +32,23 @@ export const HomeScreen: React.FC = () => {
     groups,
     expenses,
     balanceSummary,
-    isSyncing,
     refreshAll,
     notifications,
   } = useAppStore();
   const currentUser = useAuthStore(state => state.currentUser);
+  const isPro = useAuthStore(state => state.isPro);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshAll();
+    } finally {
+      setTimeout(() => {
+        setRefreshing(false);
+      }, 350);
+    }
+  };
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -82,8 +94,27 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.headerRight}>
           <TouchableOpacity
             activeOpacity={0.7}
+            onPress={() => navigation.navigate('Subscription')}
+            style={[
+              styles.proPillBtn,
+              { backgroundColor: isPro ? '#FFF4D4' : '#E7F5EF', borderColor: isPro ? '#D4AF37' : '#239B68' },
+            ]}
+          >
+            <Icon name="crown" size={14} color={isPro ? '#D4AF37' : '#176B50'} />
+            <Text
+              style={[
+                typography.caption,
+                { color: isPro ? '#8F6B00' : '#176B50', fontWeight: '800', marginLeft: 4 },
+              ]}
+            >
+              {isPro ? 'PRO' : 'UPGRADE'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
             onPress={() => navigation.navigate('Search')}
-            style={[styles.headerIconBtn, { backgroundColor: colors.surfaceVariant }]}
+            style={[styles.headerIconBtn, { backgroundColor: colors.surfaceVariant, marginLeft: 8 }]}
           >
             <Icon name="search" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -111,8 +142,8 @@ export const HomeScreen: React.FC = () => {
         contentContainerStyle={[styles.content, { paddingBottom: 100 }]}
         refreshControl={
           <RefreshControl
-            refreshing={isSyncing}
-            onRefresh={refreshAll}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             colors={[colors.primary]}
             tintColor={colors.primary}
           />
@@ -125,6 +156,24 @@ export const HomeScreen: React.FC = () => {
           youAreOwed={balanceSummary.youAreOwed}
           currency={balanceSummary.currency}
           style={{ marginBottom: spacing.lg }}
+          onPressOwe={() => {
+            navigation.navigate('MainTabs', {
+              screen: 'BalancesTab',
+              params: { filter: 'owe' },
+            });
+          }}
+          onPressOwed={() => {
+            navigation.navigate('MainTabs', {
+              screen: 'BalancesTab',
+              params: { filter: 'owed' },
+            });
+          }}
+          onPressTotal={() => {
+            navigation.navigate('MainTabs', {
+              screen: 'BalancesTab',
+              params: { filter: 'all' },
+            });
+          }}
         />
 
         {/* Quick Action Buttons */}
@@ -259,6 +308,14 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  proPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   headerIconBtn: {
     width: 38,

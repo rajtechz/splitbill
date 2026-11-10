@@ -507,11 +507,19 @@ export class HybridSplitMateRepository implements ISplitMateRepository {
       return await operation(this.httpRepo);
     } catch (error: any) {
       // If network is offline or local dev backend server is not running yet
-      if (
+      const isNetworkIssue =
         error?.code === 'NETWORK_ERROR' ||
+        error?.code === 'ECONNABORTED' ||
+        error?.code === 'ERR_NETWORK' ||
+        error?.code === 'ECONNREFUSED' ||
+        error?.code === 'ETIMEDOUT' ||
         error?.message?.includes('Network error') ||
-        error?.message?.includes('Network Error')
-      ) {
+        error?.message?.includes('Network Error') ||
+        error?.message?.includes('timeout') ||
+        error?.message?.includes('refused') ||
+        error?.message?.includes('No refresh token available');
+
+      if (isNetworkIssue) {
         console.warn(
           `[SplitMate] Backend server unreachable at ${config.apiBaseUrl} during ${opName}. Auto-fallback to local offline repository.`
         );

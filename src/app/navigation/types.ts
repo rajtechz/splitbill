@@ -1,11 +1,11 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
-import { CurrencyCode } from '../../types';
+import { CurrencyCode, ProFeature } from '../../types';
 
 export type MainTabParamList = {
   HomeTab: undefined;
   GroupsTab: undefined;
   ActivityTab: undefined;
-  BalancesTab: undefined;
+  BalancesTab: { filter?: 'all' | 'owe' | 'owed' } | undefined;
   ProfileTab: undefined;
 };
 
@@ -48,4 +48,5 @@ export type RootStackParamList = {
   Notifications: undefined;
   Search: undefined;
   EditProfile: undefined;
+  Subscription: { triggerFeature?: ProFeature } | undefined;
 };

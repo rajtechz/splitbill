@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const friend_controller_js_1 = require("../controllers/friend.controller.js");
+const auth_middleware_js_1 = require("../middleware/auth.middleware.js");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_js_1.requireAuth);
+router.get('/', friend_controller_js_1.getFriends);
+router.post('/', friend_controller_js_1.addFriend);
+router.delete('/:id', friend_controller_js_1.removeFriend);
+exports.default = router;

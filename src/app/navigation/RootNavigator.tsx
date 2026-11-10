@@ -31,6 +31,7 @@ import { AnalyticsScreen } from '../../features/analytics/screens/AnalyticsScree
 import { NotificationsScreen } from '../../features/notifications/screens/NotificationsScreen';
 import { SearchScreen } from '../../features/home/screens/SearchScreen';
 import { EditProfileScreen } from '../../features/profile/screens/EditProfileScreen';
+import { SubscriptionScreen } from '../../features/profile/screens/SubscriptionScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -94,6 +95,11 @@ export const RootNavigator: React.FC = () => {
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen name="Search" component={SearchScreen} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+          <Stack.Screen
+            name="Subscription"
+            component={SubscriptionScreen}
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
         </Stack.Group>
       )}
     </Stack.Navigator>

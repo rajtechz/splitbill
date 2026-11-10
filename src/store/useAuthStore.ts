@@ -9,6 +9,7 @@ interface AuthState {
   currentUser: User | null;
   isLoading: boolean;
   error: string | null;
+  isPro: boolean;
 
   initializeAuth: () => Promise<void>;
   login: (identifier: string, passOrOtp: string) => Promise<boolean>;
@@ -16,11 +17,18 @@ interface AuthState {
   logout: () => Promise<void>;
   updateUser: (updated: Partial<User>) => void;
   setError: (err: string | null) => void;
+  upgradeToPro: (plan?: 'monthly' | 'annual') => Promise<void>;
+  downgradeToFree: () => Promise<void>;
+  toggleProDev: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: true, // Default authenticated for frictionless developer experience
-  currentUser: CURRENT_USER,
+  currentUser: {
+    ...CURRENT_USER,
+    subscriptionTier: 'free', // Defaults to free tier so Pro features can be tested and upgraded!
+  },
+  isPro: false,
   isLoading: false,
   error: null,
 
@@ -29,12 +37,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const savedUser = await storage.getItem<User>(storage.STORAGE_KEYS.USER_SESSION);
       const token = await storage.getAuthToken();
       if (savedUser && token) {
-        set({ isAuthenticated: true, currentUser: savedUser });
+        set({
+          isAuthenticated: true,
+          currentUser: savedUser,
+          isPro: savedUser.subscriptionTier === 'pro',
+        });
       } else {
-        set({ isAuthenticated: true, currentUser: CURRENT_USER });
+        const defaultUser: User = { ...CURRENT_USER, subscriptionTier: 'free' };
+        set({
+          isAuthenticated: true,
+          currentUser: defaultUser,
+          isPro: false,
+        });
       }
     } catch {
-      set({ isAuthenticated: true, currentUser: CURRENT_USER });
+      const defaultUser: User = { ...CURRENT_USER, subscriptionTier: 'free' };
+      set({ isAuthenticated: true, currentUser: defaultUser, isPro: false });
     }
   },
 
@@ -93,5 +111,46 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setError: (err: string | null) => {
     set({ error: err });
+  },
+
+  upgradeToPro: async (plan = 'annual') => {
+    const cur = get().currentUser;
+    if (cur) {
+      const expires = new Date();
+      if (plan === 'annual') {
+        expires.setFullYear(expires.getFullYear() + 1);
+      } else {
+        expires.setMonth(expires.getMonth() + 1);
+      }
+      const updated: User = {
+        ...cur,
+        subscriptionTier: 'pro',
+        subscriptionExpiresAt: expires.toISOString(),
+      };
+      set({ currentUser: updated, isPro: true });
+      await storage.setItem(storage.STORAGE_KEYS.USER_SESSION, updated);
+    }
+  },
+
+  downgradeToFree: async () => {
+    const cur = get().currentUser;
+    if (cur) {
+      const updated: User = {
+        ...cur,
+        subscriptionTier: 'free',
+        subscriptionExpiresAt: undefined,
+      };
+      set({ currentUser: updated, isPro: false });
+      await storage.setItem(storage.STORAGE_KEYS.USER_SESSION, updated);
+    }
+  },
+
+  toggleProDev: () => {
+    const isCurrentlyPro = get().isPro;
+    if (isCurrentlyPro) {
+      get().downgradeToFree();
+    } else {
+      get().upgradeToPro('annual');
+    }
   },
 }));

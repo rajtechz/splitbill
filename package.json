@@ -10,6 +10,9 @@
     "lint": "eslint .",
     "start": "react-native start --port 8082",
     "start:8082": "react-native start --port 8082",
+    "backend": "cd backend && npm run dev",
+    "backend:start": "cd backend && npm start",
+    "backend:build": "cd backend && npm run build",
     "kill:8081": "lsof -ti:8081 | xargs kill -9 2>/dev/null || true",
     "kill:8082": "lsof -ti:8082 | xargs kill -9 2>/dev/null || true",
     "test": "jest"

@@ -19,6 +19,15 @@ export const SUPPORTED_CURRENCIES: Record<CurrencyCode, Currency> = {
   JPY: { code: 'JPY', symbol: '¥', name: 'Japanese Yen', decimals: 0 },
 };
 
+export type SubscriptionTier = 'free' | 'pro';
+
+export type ProFeature =
+  | 'receipt_ocr'
+  | 'export_csv'
+  | 'smart_simplification'
+  | 'currency_converter'
+  | 'unlimited_expenses';
+
 export interface User {
   id: string;
   name: string;
@@ -28,6 +37,8 @@ export interface User {
   avatarUrl?: string;
   defaultCurrency: CurrencyCode;
   createdAt: string;
+  subscriptionTier?: SubscriptionTier;
+  subscriptionExpiresAt?: string;
 }
 
 export interface Friend {

@@ -19,9 +19,19 @@ import { format } from 'date-fns';
 
 export const ActivityScreen: React.FC = () => {
   const { colors, typography, spacing, borderRadius } = useTheme();
-  const { activities, isSyncing, refreshAll } = useAppStore();
+  const { activities, refreshAll } = useAppStore();
 
   const [filter, setFilter] = useState<'all' | 'expenses' | 'settlements' | 'groups'>('all');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshAll();
+    } finally {
+      setTimeout(() => setRefreshing(false), 350);
+    }
+  };
 
   const filteredActivities = activities.filter(act => {
     if (filter === 'expenses') return act.type.startsWith('expense_');
@@ -93,8 +103,8 @@ export const ActivityScreen: React.FC = () => {
         contentContainerStyle={[styles.content, { paddingBottom: 100 }]}
         refreshControl={
           <RefreshControl
-            refreshing={isSyncing}
-            onRefresh={refreshAll}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             colors={[colors.primary]}
             tintColor={colors.primary}
           />
