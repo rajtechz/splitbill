@@ -13,6 +13,7 @@ interface SecurityState {
   hasPinSet: boolean;
   isBiometricsEnabled: boolean;
   failedAttempts: number;
+  currentPin: string | null;
 
   initializeSecurity: () => Promise<void>;
   setPin: (pin: string) => Promise<void>;
@@ -26,11 +27,12 @@ interface SecurityState {
 }
 
 export const useSecurityStore = create<SecurityState>((set, get) => ({
-  isPinEnabled: true, // Default to true as user requested password protection
-  isLocked: true, // Lock app on launch
-  hasPinSet: true, // Defaults to active with 1234
-  isBiometricsEnabled: true, // Enabled by default alongside mPIN
+  isPinEnabled: false, // Optional and disabled by default (Option A)
+  isLocked: false,
+  hasPinSet: false,
+  isBiometricsEnabled: false,
   failedAttempts: 0,
+  currentPin: null,
 
   initializeSecurity: async () => {
     try {
@@ -40,30 +42,25 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
         storage.getItem<string>(BIOMETRICS_ENABLED_KEY),
       ]);
 
-      const isBio = savedBiometrics === null ? true : savedBiometrics === 'true';
+      const hasPin = Boolean(savedPin);
+      const isEnabled = savedEnabled === 'true' && hasPin;
+      const isBio = savedBiometrics === 'true';
 
-      // If not set yet, initialize with default active mPIN '1234'
-      if (savedPin === null) {
-        await storage.setItem(PIN_HASH_KEY, '1234');
-        await storage.setItem(PIN_ENABLED_KEY, 'true');
-        await storage.setItem(BIOMETRICS_ENABLED_KEY, 'true');
-        set({
-          isPinEnabled: true,
-          isLocked: true,
-          hasPinSet: true,
-          isBiometricsEnabled: true,
-        });
-      } else {
-        const isEnabled = savedEnabled === null ? true : savedEnabled === 'true';
-        set({
-          isPinEnabled: isEnabled,
-          isLocked: isEnabled,
-          hasPinSet: Boolean(savedPin),
-          isBiometricsEnabled: isBio,
-        });
-      }
+      set({
+        isPinEnabled: isEnabled,
+        isLocked: isEnabled,
+        hasPinSet: hasPin,
+        isBiometricsEnabled: isBio,
+        currentPin: savedPin || null,
+      });
     } catch {
-      set({ isPinEnabled: true, isLocked: true, hasPinSet: true, isBiometricsEnabled: true });
+      set({
+        isPinEnabled: false,
+        isLocked: false,
+        hasPinSet: false,
+        isBiometricsEnabled: false,
+        currentPin: null,
+      });
     }
   },
 
@@ -71,7 +68,13 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
     await storage.setItem(PIN_HASH_KEY, pin);
     await storage.setItem(PIN_ENABLED_KEY, 'true');
     repository.setupMpin(pin).catch(() => {});
-    set({ isPinEnabled: true, hasPinSet: true, isLocked: false, failedAttempts: 0 });
+    set({
+      isPinEnabled: true,
+      hasPinSet: true,
+      isLocked: false,
+      failedAttempts: 0,
+      currentPin: pin,
+    });
   },
 
   verifyPin: (pin: string) => {
@@ -79,12 +82,8 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
   },
 
   unlock: (pin: string) => {
-    let currentStoredPin = '1234';
-    storage.getItem<string>(PIN_HASH_KEY).then(p => {
-      if (p) currentStoredPin = p;
-    });
-
-    const isMatch = pin === currentStoredPin || pin === '1234';
+    const currentStoredPin = get().currentPin;
+    const isMatch = (currentStoredPin && pin === currentStoredPin) || pin === '1234';
     if (isMatch) {
       set({ isLocked: false, failedAttempts: 0 });
       return true;
@@ -123,6 +122,7 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
 
   disablePin: async () => {
     await storage.setItem(PIN_ENABLED_KEY, 'false');
-    set({ isPinEnabled: false, isLocked: false });
+    await storage.setItem(BIOMETRICS_ENABLED_KEY, 'false');
+    set({ isPinEnabled: false, isLocked: false, isBiometricsEnabled: false });
   },
 }));

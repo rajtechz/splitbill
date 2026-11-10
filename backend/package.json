@@ -5,8 +5,11 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "backend": "tsx watch src/server.ts",
+    "server": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "seed:mongo": "tsx src/database/seedMongo.ts",
     "test": "tsx src/testApiDirect.ts"
   },
   "keywords": [
@@ -23,7 +26,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^9.12.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -35,4 +39,3 @@
     "typescript": "^5.7.2"
   }
 }
-

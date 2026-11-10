@@ -10,7 +10,7 @@ interface AvatarProps {
 }
 
 export const Avatar: React.FC<AvatarProps> = ({ name, url, size = 40, style }) => {
-  const { colors, typography } = useTheme();
+  const { colors } = useTheme();
 
   const getInitials = (str: string) => {
     if (!str) return '?';
@@ -66,14 +66,13 @@ export const Avatar: React.FC<AvatarProps> = ({ name, url, size = 40, style }) =
       ]}
     >
       <Text
-        style={[
-          typography.caption,
-          {
-            color: '#FFFFFF',
-            fontSize,
-            fontWeight: '700',
-          },
-        ]}
+        style={{
+          color: '#FFFFFF',
+          fontSize: Math.max(12, Math.round(size * 0.36)),
+          fontWeight: '700',
+          textAlign: 'center',
+        }}
+        numberOfLines={1}
       >
         {getInitials(name)}
       </Text>

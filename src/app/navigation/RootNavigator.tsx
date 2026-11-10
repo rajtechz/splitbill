@@ -47,7 +47,6 @@ export const RootNavigator: React.FC = () => {
 
   useEffect(() => {
     initializeAuth();
-    loadInitialData();
     initializeSecurity();
     notificationService.requestPermission();
 
@@ -57,7 +56,13 @@ export const RootNavigator: React.FC = () => {
       }
     });
     return () => sub.remove();
-  }, [initializeAuth, loadInitialData, initializeSecurity, lock]);
+  }, [initializeAuth, initializeSecurity, lock]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadInitialData();
+    }
+  }, [isAuthenticated, loadInitialData]);
 
   if (showSplash) {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;

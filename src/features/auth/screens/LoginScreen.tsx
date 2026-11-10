@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../app/navigation/types';
 import { useTheme } from '../../../theme';
 import { useAuthStore } from '../../../store/useAuthStore';
+import { authService } from '../services/authService';
 import { Button } from '../../../components/buttons/Button';
 import { Icon } from '../../../components/common/Icon';
 
@@ -26,20 +27,93 @@ export const LoginScreen: React.FC = () => {
   const { login, isLoading } = useAuthStore();
 
   const [mode, setMode] = useState<'email' | 'phone'>('email');
-  const [identifier, setIdentifier] = useState('alex.johnson@example.com');
-  const [password, setPassword] = useState('password123');
+  // Manual inputs for Email and Phone Number
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [sendingOtp, setSendingOtp] = useState(false);
 
-  const handleLogin = async () => {
-    if (!identifier.trim()) {
-      setErrorMsg(mode === 'email' ? 'Please enter your email' : 'Please enter your phone number');
+  const handleEmailLogin = async () => {
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      setErrorMsg('Please enter your email address');
+      return;
+    }
+    if (!password) {
+      setErrorMsg('Please enter your password');
       return;
     }
     setErrorMsg(null);
 
-    const success = await login(identifier.trim(), password);
+    const success = await login(cleanEmail, password);
     if (!success) {
-      setErrorMsg('Login failed. Please check your credentials.');
+      const authErr = useAuthStore.getState().error;
+      const authCode = useAuthStore.getState().errorCode;
+
+      // If user doesn't have an account, navigate to register page
+      if (
+        authCode === 'USER_NOT_FOUND' ||
+        authErr?.toLowerCase().includes('no account') ||
+        authErr?.toLowerCase().includes('not found') ||
+        authErr?.toLowerCase().includes('register')
+      ) {
+        console.log(`ℹ️ [LOGIN] User not registered: ${cleanEmail}. Navigating to Register page...`);
+        navigation.navigate('Register', {
+          email: cleanEmail,
+          notice: `No account was found with ${cleanEmail}. Please create your account below.`,
+        });
+        return;
+      }
+      setErrorMsg(authErr || 'Login failed. Please check your credentials.');
+    }
+  };
+
+  const handleGetOtp = async () => {
+    const cleanPhone = phone.trim();
+    if (!cleanPhone) {
+      setErrorMsg('Please enter your mobile phone number');
+      return;
+    }
+    setErrorMsg(null);
+    setSendingOtp(true);
+
+    try {
+      // Call backend API to check account and generate dynamic random OTP
+      const res = await authService.sendPhoneOtp(cleanPhone, true);
+      console.log('\n======================================================');
+      console.log(`📱 [LOGIN SCREEN] OTP requested for: ${cleanPhone}`);
+      console.log(`🔢 [LOGIN SCREEN] Dynamic OTP received from API: ${res.otp}`);
+      console.log('======================================================\n');
+
+      navigation.navigate('OtpVerification', {
+        identifier: cleanPhone,
+        generatedOtp: res.otp,
+      });
+    } catch (err: any) {
+      const code = err.code || err.response?.data?.code;
+      const msg = err.message || err.response?.data?.message || '';
+
+      // If user does not have an account, navigate to register page
+      if (
+        code === 'USER_NOT_FOUND' ||
+        err.statusCode === 404 ||
+        err.response?.status === 404 ||
+        msg.toLowerCase().includes('no account') ||
+        msg.toLowerCase().includes('not found') ||
+        msg.toLowerCase().includes('register')
+      ) {
+        console.log(`ℹ️ [LOGIN] Phone not registered: ${cleanPhone}. Navigating to Register page...`);
+        navigation.navigate('Register', {
+          phone: cleanPhone,
+          notice: `No account was found with ${cleanPhone}. Please create your account below.`,
+        });
+        return;
+      }
+
+      setErrorMsg(msg || 'Failed to send OTP. Please ensure backend is running.');
+    } finally {
+      setSendingOtp(false);
     }
   };
 
@@ -69,7 +143,7 @@ export const LoginScreen: React.FC = () => {
           <TouchableOpacity
             onPress={() => {
               setMode('email');
-              setIdentifier('alex.johnson@example.com');
+              setErrorMsg(null);
             }}
             style={[
               styles.tab,
@@ -89,7 +163,7 @@ export const LoginScreen: React.FC = () => {
           <TouchableOpacity
             onPress={() => {
               setMode('phone');
-              setIdentifier('+91 98765 43210');
+              setErrorMsg(null);
             }}
             style={[
               styles.tab,
@@ -107,32 +181,45 @@ export const LoginScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Input */}
-        <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 6 }]}>
-          {mode === 'email' ? 'EMAIL ADDRESS' : 'MOBILE PHONE NUMBER'}
-        </Text>
-        <TextInput
-          value={identifier}
-          onChangeText={setIdentifier}
-          placeholder={mode === 'email' ? 'you@example.com' : '+91 98765 43210'}
-          placeholderTextColor={colors.textMuted}
-          keyboardType={mode === 'email' ? 'email-address' : 'phone-pad'}
-          autoCapitalize="none"
-          style={[
-            styles.input,
-            typography.bodyMedium,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              borderRadius: borderRadius.md,
-              color: colors.textPrimary,
-              marginBottom: 16,
-            },
-          ]}
-        />
-
-        {mode === 'email' && (
+        {/* EMAIL LOGIN FORM */}
+        {mode === 'email' ? (
           <>
+            <View style={styles.inputHeaderRow}>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                EMAIL ADDRESS
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setEmail('alex.johnson@example.com');
+                  setPassword('password123');
+                }}
+              >
+                <Text style={[typography.caption, { color: colors.primary, fontWeight: '600' }]}>
+                  Use Demo Account
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Enter email (e.g. alex@example.com)"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={[
+                styles.input,
+                typography.bodyMedium,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  borderRadius: borderRadius.md,
+                  color: colors.textPrimary,
+                  marginBottom: 16,
+                },
+              ]}
+            />
+
             <View style={styles.passwordHeader}>
               <Text style={[typography.caption, { color: colors.textSecondary }]}>
                 PASSWORD
@@ -143,12 +230,47 @@ export const LoginScreen: React.FC = () => {
                 </Text>
               </TouchableOpacity>
             </View>
+
             <TextInput
               value={password}
               onChangeText={setPassword}
-              placeholder="••••••••"
+              placeholder="Enter password"
               placeholderTextColor={colors.textMuted}
               secureTextEntry
+              style={[
+                styles.input,
+                typography.bodyMedium,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  borderRadius: borderRadius.md,
+                  color: colors.textPrimary,
+                  marginBottom: 16,
+                },
+              ]}
+            />
+          </>
+        ) : (
+          /* PHONE OTP LOGIN FORM */
+          <>
+            <View style={styles.inputHeaderRow}>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                MOBILE PHONE NUMBER
+              </Text>
+              <TouchableOpacity onPress={() => setPhone('+91 98765 43210')}>
+                <Text style={[typography.caption, { color: colors.primary, fontWeight: '600' }]}>
+                  Use Demo Number
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="Enter mobile number (e.g. +91 98765 43210)"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="phone-pad"
+              autoCapitalize="none"
               style={[
                 styles.input,
                 typography.bodyMedium,
@@ -172,12 +294,8 @@ export const LoginScreen: React.FC = () => {
 
         <Button
           title={mode === 'email' ? 'Sign In' : 'Get OTP Code'}
-          onPress={
-            mode === 'email'
-              ? handleLogin
-              : () => navigation.navigate('OtpVerification', { identifier })
-          }
-          loading={isLoading}
+          onPress={mode === 'email' ? handleEmailLogin : handleGetOtp}
+          loading={mode === 'email' ? isLoading : sendingOtp}
           style={{ marginTop: 8 }}
         />
 
@@ -202,8 +320,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 24,
-    justifyContent: 'center',
-    flexGrow: 1,
+    paddingTop: 60,
   },
   brandContainer: {
     alignItems: 'center',
@@ -213,21 +330,22 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 18,
-    shadowColor: '#176B50',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
   },
   tabBar: {
     flexDirection: 'row',
-    padding: 3,
-    marginBottom: 20,
+    padding: 4,
+    marginBottom: 24,
   },
   tab: {
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  inputHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
   },
   passwordHeader: {
     flexDirection: 'row',
@@ -237,13 +355,11 @@ const styles = StyleSheet.create({
   input: {
     height: 48,
     borderWidth: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
   },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
     marginTop: 24,
   },
 });
-

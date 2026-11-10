@@ -9,25 +9,33 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../app/navigation/types';
 import { useTheme } from '../../../theme';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { Button } from '../../../components/buttons/Button';
 import { AppHeader } from '../../../components/common/AppHeader';
+import { Icon } from '../../../components/common/Icon';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type RegisterRouteProp = RouteProp<RootStackParamList, 'Register'>;
 
 export const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RegisterRouteProp>();
   const { colors, typography, spacing, borderRadius } = useTheme();
   const { register, isLoading } = useAuthStore();
 
+  const initialEmail = route.params?.email || '';
+  const initialPhone = route.params?.phone || '';
+  const initialNotice = route.params?.notice || (initialEmail || initialPhone ? 'No account was found for your login details. Please register to create your account.' : null);
+
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState(initialEmail);
+  const [phone, setPhone] = useState(initialPhone);
   const [password, setPassword] = useState('');
+  const [noticeMsg, setNoticeMsg] = useState<string | null>(initialNotice);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleRegister = async () => {
@@ -45,9 +53,10 @@ export const RegisterScreen: React.FC = () => {
     }
 
     setErrorMsg(null);
-    const success = await register(name.trim(), email.trim(), phone.trim() || undefined);
+    const success = await register(name.trim(), email.trim(), phone.trim() || undefined, password);
     if (!success) {
-      setErrorMsg('Registration failed. Please try again.');
+      const err = useAuthStore.getState().error || 'Registration failed. Please try again.';
+      setErrorMsg(err);
     }
   };
 
@@ -62,9 +71,32 @@ export const RegisterScreen: React.FC = () => {
         <Text style={[typography.h2, { color: colors.textPrimary, marginBottom: 8 }]}>
           Join SplitMate
         </Text>
-        <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginBottom: 24 }]}>
+        <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginBottom: 20 }]}>
           Start splitting expenses with friends in seconds
         </Text>
+
+        {noticeMsg && (
+          <View
+            style={[
+              styles.noticeCard,
+              {
+                backgroundColor: colors.surfaceVariant,
+                borderColor: colors.primary,
+                borderRadius: borderRadius.md,
+              },
+            ]}
+          >
+            <Icon name="sparkles" size={18} color={colors.primary} />
+            <Text
+              style={[
+                typography.caption,
+                { color: colors.textPrimary, marginLeft: 10, flex: 1, lineHeight: 18 },
+              ]}
+            >
+              {noticeMsg}
+            </Text>
+          </View>
+        )}
 
         <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 6 }]}>
           FULL NAME *
@@ -194,6 +226,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 24,
+  },
+  noticeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderWidth: 1,
+    marginBottom: 20,
   },
 });
 

@@ -24,6 +24,14 @@ export const authService = {
 
     const res = await apiClient.post('/auth/login', data);
     const result: AuthResponse = res.data.data || res.data;
+
+    console.log('\n======================================================');
+    console.log(`🔑 [AUTH SERVICE - EMAIL LOGIN SUCCESS]`);
+    console.log(`👤 User:          ${result.user.name} (${result.user.email})`);
+    console.log(`🎫 Access Token:\n${result.tokens.accessToken}`);
+    console.log(`🔄 Refresh Token:\n${result.tokens.refreshToken}`);
+    console.log('======================================================\n');
+
     await storage.setTokens(result.tokens);
     await storage.setItem(storage.STORAGE_KEYS.USER_SESSION, result.user);
     return result;
@@ -47,18 +55,38 @@ export const authService = {
 
     const res = await apiClient.post('/auth/otp/verify', { phoneNumber, otp });
     const result: AuthResponse = res.data.data || res.data;
+
+    console.log('\n======================================================');
+    console.log(`🔑 [AUTH SERVICE - OTP LOGIN SUCCESS]`);
+    console.log(`📱 Phone:         ${phoneNumber}`);
+    console.log(`👤 User:          ${result.user.name} (${result.user.email})`);
+    console.log(`🎫 Access Token:\n${result.tokens.accessToken}`);
+    console.log(`🔄 Refresh Token:\n${result.tokens.refreshToken}`);
+    console.log('======================================================\n');
+
     await storage.setTokens(result.tokens);
     await storage.setItem(storage.STORAGE_KEYS.USER_SESSION, result.user);
     return result;
   },
 
-  async sendPhoneOtp(phoneNumber: string): Promise<{ success: boolean; message?: string }> {
+  async sendPhoneOtp(phoneNumber: string, isLogin: boolean = false): Promise<{ success: boolean; message?: string; otp?: string }> {
     if (config.useMockApi) {
       await new Promise(resolve => setTimeout(() => resolve(undefined), 300));
-      return { success: true, message: 'OTP sent to ' + phoneNumber };
+      const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      console.log('\n======================================================');
+      console.log(`🔑 [SPLITMATE DEV OTP] Generated Random OTP for ${phoneNumber}:`);
+      console.log(`🔢 Code: ${randomOtp}`);
+      console.log('======================================================\n');
+      return { success: true, message: 'OTP sent to ' + phoneNumber, otp: randomOtp };
     }
-    const res = await apiClient.post('/auth/otp/send', { phoneNumber });
-    return res.data;
+
+    const res = await apiClient.post('/auth/otp/send', { phoneNumber, isLogin });
+    const otp = res.data?.data?.otp || res.data?.data?.devOtp;
+    console.log('\n======================================================');
+    console.log(`🔑 [SPLITMATE BACKEND API] Received Random OTP for ${phoneNumber}:`);
+    console.log(`🔢 Code: ${otp}`);
+    console.log('======================================================\n');
+    return { success: true, message: res.data?.message, otp };
   },
 
   async register(data: RegisterDto): Promise<AuthResponse> {
@@ -81,8 +109,21 @@ export const authService = {
       return { user, tokens };
     }
 
+    console.log('\n======================================================');
+    console.log(`📝 [AUTH SERVICE] Submitting Registration for: ${data.name} (${data.email})`);
+    console.log('======================================================\n');
+
     const res = await apiClient.post('/auth/register', data);
     const result: AuthResponse = res.data.data || res.data;
+
+    console.log('\n======================================================');
+    console.log(`🎉 [AUTH SERVICE] Registration Response Success!`);
+    console.log(`👤 User ID:       ${result.user.id}`);
+    console.log(`📧 User Email:    ${result.user.email}`);
+    console.log(`🎫 Access Token:\n${result.tokens.accessToken}`);
+    console.log(`🔄 Refresh Token:\n${result.tokens.refreshToken}`);
+    console.log('======================================================\n');
+
     await storage.setTokens(result.tokens);
     await storage.setItem(storage.STORAGE_KEYS.USER_SESSION, result.user);
     return result;

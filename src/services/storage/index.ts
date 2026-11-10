@@ -53,6 +53,9 @@ export const storage = {
       if (tokens.refreshToken) {
         await AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
       }
+      if (__DEV__) {
+        console.log(`💾 [STORAGE] Stored access token (${tokens.accessToken.slice(0, 15)}...) and refresh token in AsyncStorage`);
+      }
     } catch (e) {
       console.warn('Failed to set tokens', e);
     }
@@ -63,6 +66,9 @@ export const storage = {
       await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
       await AsyncStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
       await AsyncStorage.removeItem(STORAGE_KEYS.USER_SESSION);
+      if (__DEV__) {
+        console.log('🗑️ [STORAGE] Cleared auth token, refresh token & user session from AsyncStorage');
+      }
     } catch (e) {
       console.warn('Failed to clear auth', e);
     }

@@ -54,6 +54,9 @@ interface AppState {
   // Notifications
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
+
+  // Reset on Logout
+  resetData: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -222,6 +225,27 @@ export const useAppStore = create<AppState>((set, get) => ({
     set(state => ({
       notifications: state.notifications.map(n => ({ ...n, read: true })),
     }));
+  },
+
+  resetData: () => {
+    set({
+      groups: [],
+      friends: [],
+      expenses: [],
+      settlements: [],
+      activities: [],
+      notifications: [],
+      isLoading: false,
+      isSyncing: false,
+      error: null,
+      balanceSummary: {
+        totalBalance: 0,
+        youOwe: 0,
+        youAreOwed: 0,
+        currency: 'INR',
+      },
+      simplifiedDebts: [],
+    });
   },
 }));
 

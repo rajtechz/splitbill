@@ -10,6 +10,7 @@ interface AuthState {
   currentUser: User | null;
   isLoading: boolean;
   error: string | null;
+  errorCode: string | null;
   isPro: boolean;
 
   initializeAuth: () => Promise<void>;
@@ -17,21 +18,19 @@ interface AuthState {
   register: (name: string, email: string, phone?: string, password?: string) => Promise<boolean>;
   logout: () => Promise<void>;
   updateUser: (updated: Partial<User>) => void;
-  setError: (err: string | null) => void;
+  setError: (err: string | null, code?: string | null) => void;
   upgradeToPro: (plan?: 'monthly' | 'annual') => Promise<void>;
   downgradeToFree: () => Promise<void>;
   toggleProDev: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  isAuthenticated: true, // Default authenticated for frictionless developer experience
-  currentUser: {
-    ...CURRENT_USER,
-    subscriptionTier: 'free', // Defaults to free tier so Pro features can be tested and upgraded!
-  },
+  isAuthenticated: false, // Default to unauthenticated: loads login screen unless valid token exists
+  currentUser: null,
   isPro: false,
   isLoading: false,
   error: null,
+  errorCode: null,
 
   initializeAuth: async () => {
     try {
@@ -43,33 +42,60 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           currentUser: savedUser,
           isPro: savedUser.subscriptionTier === 'pro',
         });
+        if (__DEV__) {
+          console.log(`🔑 [AUTH] Valid token found for ${savedUser.name} (${savedUser.email}). Session active.`);
+        }
       } else {
-        const defaultUser: User = { ...CURRENT_USER, subscriptionTier: 'free' };
+        // No valid token or user session in storage -> stay on login screen
+        await storage.clearAuth();
         set({
-          isAuthenticated: true,
-          currentUser: defaultUser,
+          isAuthenticated: false,
+          currentUser: null,
           isPro: false,
         });
+        if (__DEV__) {
+          console.log('🔒 [AUTH] No active token found in storage. Redirected to Login.');
+        }
       }
     } catch {
-      const defaultUser: User = { ...CURRENT_USER, subscriptionTier: 'free' };
-      set({ isAuthenticated: true, currentUser: defaultUser, isPro: false });
+      await storage.clearAuth();
+      set({ isAuthenticated: false, currentUser: null, isPro: false });
     }
   },
 
   login: async (identifier: string, passOrOtp: string) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, errorCode: null });
     try {
       const isEmail = identifier.includes('@');
       const response = isEmail
         ? await authService.loginWithEmail({ email: identifier, password: passOrOtp })
         : await authService.loginWithPhoneOtp(identifier, passOrOtp);
 
-      set({ isAuthenticated: true, currentUser: response.user, isLoading: false });
+      // Store tokens and user session securely in local storage
+      await storage.setTokens(response.tokens);
+      await storage.setItem(storage.STORAGE_KEYS.USER_SESSION, response.user);
+
+      set({
+        isAuthenticated: true,
+        currentUser: response.user,
+        isPro: response.user.subscriptionTier === 'pro',
+        isLoading: false,
+        error: null,
+        errorCode: null,
+      });
+
+      if (__DEV__) {
+        console.log('\n======================================================');
+        console.log(`🎉 [AUTH STORE - LOGIN SUCCESS]`);
+        console.log(`👤 User:          ${response.user.name} (${response.user.email})`);
+        console.log(`🎫 Stored Token:\n${response.tokens.accessToken}`);
+        console.log('======================================================\n');
+      }
       return true;
     } catch (e: any) {
-      const msg = e.message || 'Login failed. Please check your credentials.';
-      set({ error: msg, isLoading: false });
+      const msg = e.response?.data?.message || e.message || 'Login failed. Please check your credentials.';
+      const code = e.code || e.response?.data?.code || (msg.toLowerCase().includes('no account') ? 'USER_NOT_FOUND' : null);
+      set({ error: msg, errorCode: code, isLoading: false });
       return false;
     }
   },
@@ -84,20 +110,57 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         password,
         defaultCurrency: 'INR',
       });
-      set({ isAuthenticated: true, currentUser: response.user, isLoading: false });
+
+      // Store tokens and user session securely in local storage
+      await storage.setTokens(response.tokens);
+      await storage.setItem(storage.STORAGE_KEYS.USER_SESSION, response.user);
+
+      set({
+        isAuthenticated: true,
+        currentUser: response.user,
+        isPro: response.user.subscriptionTier === 'pro',
+        isLoading: false,
+      });
+
+      if (__DEV__) {
+        console.log('\n======================================================');
+        console.log(`🎉 [AUTH STORE - REGISTER SUCCESS]`);
+        console.log(`👤 User:          ${response.user.name} (${response.user.email})`);
+        console.log(`🎫 Stored Token:\n${response.tokens.accessToken}`);
+        console.log('======================================================\n');
+      }
       return true;
     } catch (e: any) {
-      const msg = e.message || 'Registration failed. Please try again.';
+      const msg = e.response?.data?.message || e.message || 'Registration failed. Please try again.';
+      console.warn('❌ [REGISTER ERROR]', msg);
       set({ error: msg, isLoading: false });
       return false;
     }
   },
 
   logout: async () => {
+    set({ isLoading: true });
     try {
       await authService.logout();
+    } catch (err) {
+      console.warn('Backend logout warning:', err);
     } finally {
-      set({ isAuthenticated: false, currentUser: null, error: null });
+      // Clear token, refresh token, and user session from app storage
+      await storage.clearAuth();
+      try {
+        const { useAppStore } = await import('./useAppStore');
+        useAppStore.getState().resetData();
+      } catch {}
+      set({
+        isAuthenticated: false,
+        currentUser: null,
+        isPro: false,
+        isLoading: false,
+        error: null,
+      });
+      if (__DEV__) {
+        console.log('🔒 [AUTH] User logged out. All tokens and session data cleared from app storage.');
+      }
     }
   },
 
@@ -111,8 +174,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  setError: (err: string | null) => {
-    set({ error: err });
+  setError: (err: string | null, code: string | null = null) => {
+    set({ error: err, errorCode: code });
   },
 
   upgradeToPro: async (plan = 'annual') => {

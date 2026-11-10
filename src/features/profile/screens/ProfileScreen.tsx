@@ -87,31 +87,32 @@ export const ProfileScreen: React.FC = () => {
         >
           <View style={styles.profileRow}>
             <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setShowPhotoModal(true)}
-              style={{ position: 'relative' }}
+              activeOpacity={0.7}
+              onPress={() => {
+                console.log('📷 [PROFILE] Avatar pressed -> opening PhotoPickerModal');
+                setShowPhotoModal(true);
+              }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={styles.avatarTouchable}
+              accessibilityRole="button"
+              accessibilityLabel="Change profile picture"
             >
               <Avatar
-                name={currentUser?.name || 'Alex Johnson'}
+                name={currentUser?.name || 'User'}
                 url={currentUser?.avatarUrl}
-                size={64}
+                size={68}
               />
               <View
-                style={{
-                  position: 'absolute',
-                  bottom: -2,
-                  right: -2,
-                  backgroundColor: colors.primary,
-                  width: 22,
-                  height: 22,
-                  borderRadius: 11,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 2,
-                  borderColor: '#FFFFFF',
-                }}
+                pointerEvents="none"
+                style={[
+                  styles.cameraBadge,
+                  {
+                    backgroundColor: colors.primary,
+                    borderColor: colors.surface,
+                  },
+                ]}
               >
-                <Icon name="camera" size={12} color="#FFFFFF" />
+                <Icon name="camera" size={13} color="#FFFFFF" />
               </View>
             </TouchableOpacity>
             <View style={{ flex: 1, marginLeft: 16 }}>
@@ -520,6 +521,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  avatarTouchable: {
+    width: 68,
+    height: 68,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
   },
   editProfileBtn: {
     flexDirection: 'row',

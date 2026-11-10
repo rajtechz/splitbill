@@ -10,7 +10,8 @@ router.post('/otp/send', auth_controller_js_1.sendOtp);
 router.post('/otp/verify', auth_controller_js_1.verifyOtp);
 router.post('/refresh-token', auth_controller_js_1.refreshToken);
 router.post('/forgot-password', auth_controller_js_1.forgotPassword);
-router.post('/logout', auth_controller_js_1.logout);
+router.post('/logout', auth_middleware_js_1.optionalAuth, auth_controller_js_1.logout);
+router.get('/logout', auth_middleware_js_1.optionalAuth, auth_controller_js_1.logout);
 // 4-Digit mPIN & Biometrics
 router.post('/mpin/setup', auth_middleware_js_1.optionalAuth, auth_controller_js_1.setupMpin);
 router.post('/mpin/verify', auth_middleware_js_1.optionalAuth, auth_controller_js_1.verifyMpin);

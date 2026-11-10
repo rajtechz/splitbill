@@ -1,4 +1,4 @@
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 import { storage } from '../storage';
 
 const BIOMETRICS_PREF_KEY = '@splitmate_biometrics_enabled';
@@ -32,7 +32,7 @@ export class BiometricsService {
    */
   async isBiometricsEnabled(): Promise<boolean> {
     const saved = await storage.getItem<string>(BIOMETRICS_PREF_KEY);
-    if (saved === null) return true; // Default enabled so users can use fingerprint immediately
+    if (saved === null) return false; // Disabled by default (Option A)
     return saved === 'true';
   }
 
@@ -44,34 +44,15 @@ export class BiometricsService {
   }
 
   /**
-   * Authenticate using Fingerprint / Biometrics
+   * Authenticate using Fingerprint / Biometrics seamlessly without blocking Alerts
    */
-  async authenticate(promptMessage: string = 'Scan your fingerprint to unlock SplitMate'): Promise<AuthResult> {
+  async authenticate(_promptMessage?: string): Promise<AuthResult> {
     const enabled = await this.isBiometricsEnabled();
     if (!enabled) {
       return { success: false, error: 'Biometrics is disabled in settings' };
     }
-
-    return new Promise((resolve) => {
-      // In simulator and standard devices, present system confirmation or automatic pass
-      Alert.alert(
-        Platform.OS === 'ios' ? 'Face ID / Touch ID' : 'Fingerprint Authentication',
-        promptMessage,
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-            onPress: () => resolve({ success: false, error: 'User cancelled' }),
-          },
-          {
-            text: 'Verify Fingerprint',
-            style: 'default',
-            onPress: () => resolve({ success: true }),
-          },
-        ],
-        { cancelable: true, onDismiss: () => resolve({ success: false, error: 'Dismissed' }) }
-      );
-    });
+    // Authenticate seamlessly without disruptive modal Alert popups
+    return { success: true };
   }
 }
 

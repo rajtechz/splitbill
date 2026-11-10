@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
 import { useTheme } from '../../../theme';
 import { Icon } from '../../../components/common/Icon';
 import { useSecurityStore } from '../../../store/useSecurityStore';
+import { BiometricVerifyModal } from '../../../components/modals/BiometricVerifyModal';
+import { PinSetupModal } from '../../../components/modals/PinSetupModal';
 
 interface PinLockScreenProps {
   onSuccess?: () => void;
@@ -22,28 +24,12 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onSuccess }) => {
 
   const [enteredPin, setEnteredPin] = useState('');
   const [hasError, setHasError] = useState(false);
+  const [showBioModal, setShowBioModal] = useState(false);
+  const [showResetPinModal, setShowResetPinModal] = useState(false);
   const shakeAnim = useRef(new Animated.Value(0)).current;
-  const hasPromptedBio = useRef(false);
-
-  // Automatically prompt for fingerprint/biometrics on mount if enabled
-  useEffect(() => {
-    if (isBiometricsEnabled && !hasPromptedBio.current) {
-      hasPromptedBio.current = true;
-      const timer = setTimeout(async () => {
-        const success = await unlockWithBiometrics();
-        if (success) {
-          onSuccess?.();
-        }
-      }, 350);
-      return () => clearTimeout(timer);
-    }
-  }, [isBiometricsEnabled, unlockWithBiometrics, onSuccess]);
 
   const handleBiometricAuth = async () => {
-    const success = await unlockWithBiometrics();
-    if (success) {
-      onSuccess?.();
-    }
+    setShowBioModal(true);
   };
 
   const triggerShake = () => {
@@ -162,20 +148,26 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onSuccess }) => {
             </TouchableOpacity>
           ))}
 
-          {/* Bottom Left: Fingerprint Button */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleBiometricAuth}
-            style={[
-              styles.keypadButton,
-              {
-                backgroundColor: isDark ? '#122E22' : '#E8F5E9',
-                borderColor: colors.primary,
-              },
-            ]}
-          >
-            <Icon name="fingerprint" size={32} color={colors.primary} />
-          </TouchableOpacity>
+          {/* Bottom Left: Fingerprint Button (Hidden when disabled in app settings) */}
+          {isBiometricsEnabled ? (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={handleBiometricAuth}
+              style={[
+                styles.keypadButton,
+                {
+                  backgroundColor: isDark ? '#122E22' : '#E8F5E9',
+                  borderColor: colors.primary,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Verify Fingerprint"
+            >
+              <Icon name="fingerprint" size={32} color={colors.primary} />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.keypadPlaceholder} />
+          )}
 
           {/* Bottom Middle: 0 */}
           <TouchableOpacity
@@ -201,30 +193,79 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({ onSuccess }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Quick Helper Button & Security Footer Hint */}
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => {
-            setEnteredPin('1234');
-            setTimeout(() => {
-              unlock('1234');
-              onSuccess?.();
-            }, 100);
-          }}
-          style={styles.defaultPinButton}
-        >
-          <Text style={[typography.caption, { color: colors.primary, fontWeight: '600' }]}>
-            Use Default PIN (1234)
-          </Text>
-        </TouchableOpacity>
+        {/* mPIN Management Helpers (Forgot, Reset/Update, Default) */}
+        <View style={styles.helpersRow}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setShowResetPinModal(true)}
+            style={styles.helperBtn}
+          >
+            <Text style={[typography.caption, { color: colors.primary, fontWeight: '700' }]}>
+              Forgot mPIN?
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={{ color: colors.border, marginHorizontal: 8 }}>|</Text>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setShowResetPinModal(true)}
+            style={styles.helperBtn}
+          >
+            <Text style={[typography.caption, { color: colors.primary, fontWeight: '700' }]}>
+              Reset / Update PIN
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={{ color: colors.border, marginHorizontal: 8 }}>|</Text>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              setEnteredPin('1234');
+              setTimeout(() => {
+                unlock('1234');
+                onSuccess?.();
+              }, 100);
+            }}
+            style={styles.helperBtn}
+          >
+            <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '600' }]}>
+              Default (1234)
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.footerHint}>
           <Icon name="lock" size={14} color={colors.textSecondary} />
           <Text style={[typography.caption, { color: colors.textSecondary, marginLeft: 6 }]}>
-            Protected by Fingerprint & 4-Digit mPIN
+            {isBiometricsEnabled
+              ? 'Protected by Fingerprint & 4-Digit mPIN'
+              : 'Protected by 4-Digit mPIN'}
           </Text>
         </View>
       </View>
+
+      {/* Beautiful Custom Biometric Verification Modal */}
+      <BiometricVerifyModal
+        visible={showBioModal}
+        onClose={() => setShowBioModal(false)}
+        onSuccess={() => {
+          unlockWithBiometrics();
+          onSuccess?.();
+        }}
+      />
+
+      {/* Forgot / Reset / Update mPIN Modal */}
+      <PinSetupModal
+        visible={showResetPinModal}
+        isForgotMode={true}
+        onClose={() => setShowResetPinModal(false)}
+        onSuccess={newPin => {
+          unlock(newPin);
+          onSuccess?.();
+        }}
+      />
     </View>
   );
 };
@@ -282,15 +323,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  defaultPinButton: {
-    marginTop: 18,
+  keypadPlaceholder: {
+    width: 76,
+    height: 76,
+  },
+  helpersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+    flexWrap: 'wrap',
+  },
+  helperBtn: {
     paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    paddingHorizontal: 8,
   },
   footerHint: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 14,
   },
 });

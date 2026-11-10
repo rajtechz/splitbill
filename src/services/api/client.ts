@@ -30,13 +30,24 @@ export const updateApiBaseUrl = (url: string) => {
   apiClient.defaults.baseURL = url;
 };
 
-// Request interceptor: Attach JWT token
+// Request interceptor: Attach JWT token & Log in DEV
 apiClient.interceptors.request.use(
   async (requestConfig: InternalAxiosRequestConfig) => {
     const token = await storage.getAuthToken();
     if (token && requestConfig.headers) {
       requestConfig.headers.Authorization = `Bearer ${token}`;
+    } else if (requestConfig.headers && requestConfig.headers.Authorization) {
+      delete requestConfig.headers.Authorization;
     }
+
+    if (__DEV__) {
+      console.log(
+        `📡 [API REQ] ${requestConfig.method?.toUpperCase()} ${requestConfig.baseURL || ''}${requestConfig.url}`,
+        token ? `[Auth Token Attached: ${token.slice(0, 15)}...]` : '[No Auth Token]',
+        requestConfig.data ? JSON.stringify(requestConfig.data) : ''
+      );
+    }
+
     return requestConfig;
   },
   error => Promise.reject(error)
@@ -60,10 +71,21 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Response interceptor: Handle 401 & Token Refresh
+// Response interceptor: Handle 401 & Token Refresh & Log in DEV
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response: AxiosResponse) => {
+    if (__DEV__) {
+      console.log(`✅ [API RES] ${response.status} ${response.config.url}`, response.data);
+    }
+    return response;
+  },
   async error => {
+    if (__DEV__) {
+      console.warn(
+        `❌ [API ERR] ${error.response?.status || 'FAIL'} ${error.config?.url}`,
+        error.response?.data || error.message
+      );
+    }
     const originalRequest = error.config;
 
     // Avoid infinite loop if refresh endpoint itself returns 401

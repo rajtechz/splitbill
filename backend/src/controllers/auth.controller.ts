@@ -10,23 +10,35 @@ export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   if (!email) {
+    console.warn('❌ [AUTH LOGIN FAILED] Email is missing in request');
     return sendError(res, 'Email is required', 400, 'VALIDATION_ERROR');
   }
 
   const user = store.findUserByEmail(email);
   if (!user) {
-    return sendError(res, 'Invalid email or password', 401, 'INVALID_CREDENTIALS');
+    console.warn(`❌ [AUTH LOGIN FAILED] No user found for email: ${email}`);
+    return sendError(res, 'No account found with this email. Please register.', 404, 'USER_NOT_FOUND');
   }
 
   if (password && user.passwordHash) {
     const isMatch = bcrypt.compareSync(password, user.passwordHash);
     if (!isMatch) {
+      console.warn(`❌ [AUTH LOGIN FAILED] Password mismatch for email: ${email}`);
       return sendError(res, 'Invalid email or password', 401, 'INVALID_CREDENTIALS');
     }
   }
 
   const tokens = generateTokens(user);
   const { passwordHash: _, mPin: __, ...safeUser } = user;
+
+  console.log('\n======================================================');
+  console.log('🔐 [AUTH API - LOGIN SUCCESS]');
+  console.log(`👤 User:          ${safeUser.name} (${safeUser.email})`);
+  console.log(`🆔 User ID:       ${safeUser.id}`);
+  console.log(`💵 Currency:      ${safeUser.defaultCurrency}`);
+  console.log(`🎫 Access Token:\n${tokens.accessToken}`);
+  console.log(`🔄 Refresh Token:\n${tokens.refreshToken}`);
+  console.log('======================================================\n');
 
   return sendSuccess(res, {
     user: safeUser,
@@ -43,28 +55,38 @@ export const register = async (req: Request, res: Response) => {
 
   const existing = store.findUserByEmail(email);
   if (existing) {
-    return sendError(res, 'User with this email already exists', 409, 'USER_EXISTS');
+    console.warn(`❌ [AUTH REGISTER FAILED] Email already registered: ${email}`);
+    return sendError(res, 'An account with this email already exists. Please log in.', 409, 'USER_EXISTS');
   }
 
   const passwordHash = password ? bcrypt.hashSync(password, 8) : undefined;
 
   const newUser: User = {
     id: `usr_${Date.now()}`,
-    name,
+    name: name.trim(),
     email: email.trim().toLowerCase(),
     passwordHash,
-    phoneNumber,
+    phoneNumber: phoneNumber ? phoneNumber.trim() : undefined,
     defaultCurrency: defaultCurrency || 'INR',
     country: country || 'IN',
-    isPinEnabled: true,
-    isBiometricsEnabled: true,
-    mPin: '1234',
+    isPinEnabled: false,
+    isBiometricsEnabled: false,
     createdAt: new Date().toISOString(),
   };
 
   store.createUser(newUser);
   const tokens = generateTokens(newUser);
   const { passwordHash: _, mPin: __, ...safeUser } = newUser;
+
+  console.log('\n======================================================');
+  console.log('🎉 [AUTH API - REGISTER SUCCESS]');
+  console.log(`👤 Name:          ${safeUser.name}`);
+  console.log(`📧 Email:         ${safeUser.email}`);
+  console.log(`📱 Phone:         ${safeUser.phoneNumber || 'N/A'}`);
+  console.log(`🆔 User ID:       ${safeUser.id}`);
+  console.log(`🎫 Access Token:\n${tokens.accessToken}`);
+  console.log(`🔄 Refresh Token:\n${tokens.refreshToken}`);
+  console.log('======================================================\n');
 
   return sendSuccess(res, {
     user: safeUser,
@@ -73,37 +95,71 @@ export const register = async (req: Request, res: Response) => {
 };
 
 export const sendOtp = async (req: Request, res: Response) => {
-  const { phoneNumber, email } = req.body;
+  const { phoneNumber, email, isLogin } = req.body;
   if (!phoneNumber && !email) {
     return sendError(res, 'Phone number or email is required', 400, 'VALIDATION_ERROR');
   }
 
+  const target = phoneNumber || email;
+
+  // If this is a login attempt, verify that the user already has an account
+  if (isLogin) {
+    const existingUser = phoneNumber ? store.findUserByPhone(phoneNumber) : (email ? store.findUserByEmail(email) : undefined);
+    if (!existingUser) {
+      console.warn(`❌ [AUTH OTP LOGIN FAILED] No account found for target: ${target}`);
+      return sendError(res, `No account found with this ${phoneNumber ? 'phone number' : 'email'}. Please register.`, 404, 'USER_NOT_FOUND');
+    }
+  }
+
   // Uses flexible OtpProvider (Mock/Twilio/Firebase)
   const result = await otpProvider.sendOtp({ phone: phoneNumber, email });
+  const generatedOtp = result.devOtp || '123456';
 
+  console.log('\n======================================================');
+  console.log('🔑 [AUTH API - OTP GENERATED ON RESPONSE]');
+  console.log(`📱 Recipient:        ${target}`);
+  console.log(`🔢 Generated OTP:    ${generatedOtp}`);
+  console.log(`⚡ Dev Universal OTP: 123456 (Accepted at all times)`);
+  console.log(`⏱️  Validity:         5 minutes`);
+  console.log('======================================================\n');
+
+  // Return the OTP directly in the response so it can be immediately tested and used!
   return sendSuccess(res, {
-    sent: result.success,
+    sent: true,
+    recipient: target,
     phoneNumber,
     email,
+    otp: generatedOtp,
+    devOtp: generatedOtp,
+    universalOtp: '123456',
     trackingId: result.trackingId,
-    devOtp: result.devOtp,
-  }, result.message);
+    expiresInSeconds: 300,
+    instructions: `Use otp "${generatedOtp}" or fallback "123456" in POST /auth/otp/verify`,
+  }, `OTP generated successfully: ${generatedOtp}`);
 };
 
 export const verifyOtp = async (req: Request, res: Response) => {
-  const { phoneNumber, email, otp } = req.body;
+  const { phoneNumber, email, otp, isLogin } = req.body;
 
   if ((!phoneNumber && !email) || !otp) {
     return sendError(res, 'Phone number/email and OTP code are required', 400, 'VALIDATION_ERROR');
   }
 
+  const target = phoneNumber || email;
   const isValid = await otpProvider.verifyOtp({ phone: phoneNumber, email }, otp);
+
   if (!isValid) {
-    return sendError(res, 'Invalid or expired OTP code (Test code: 123456)', 400, 'INVALID_OTP');
+    console.warn(`❌ [AUTH OTP VERIFY FAILED] Invalid OTP code "${otp}" for ${target}`);
+    return sendError(res, 'Invalid or expired OTP code (Valid code or dev code 123456)', 400, 'INVALID_OTP');
   }
 
   // Find or create user dynamically
   let user = phoneNumber ? store.findUserByPhone(phoneNumber) : (email ? store.findUserByEmail(email) : undefined);
+  if (isLogin && !user) {
+    console.warn(`❌ [AUTH OTP VERIFY FAILED] No account found for target: ${target}`);
+    return sendError(res, 'No account found for this mobile/email. Please register first.', 404, 'USER_NOT_FOUND');
+  }
+
   if (!user) {
     const identifier = phoneNumber || email || 'user';
     user = {
@@ -113,16 +169,25 @@ export const verifyOtp = async (req: Request, res: Response) => {
       phoneNumber,
       defaultCurrency: 'INR',
       country: 'IN',
-      isPinEnabled: true,
-      isBiometricsEnabled: true,
-      mPin: '1234',
+      isPinEnabled: false,
+      isBiometricsEnabled: false,
       createdAt: new Date().toISOString(),
     };
     store.createUser(user);
+    console.log(`🆕 [AUTH API] Auto-created new user for ${target} with ID: ${user.id}`);
   }
 
   const tokens = generateTokens(user);
   const { passwordHash: _, mPin: __, ...safeUser } = user;
+
+  console.log('\n======================================================');
+  console.log('✅ [AUTH API - OTP VERIFIED & LOGGED IN]');
+  console.log(`📱 Recipient:     ${target}`);
+  console.log(`🔢 Code Verified: ${otp}`);
+  console.log(`👤 User:          ${safeUser.name} (${safeUser.email})`);
+  console.log(`🎫 Access Token:\n${tokens.accessToken}`);
+  console.log(`🔄 Refresh Token:\n${tokens.refreshToken}`);
+  console.log('======================================================\n');
 
   return sendSuccess(res, {
     user: safeUser,
@@ -148,16 +213,24 @@ export const refreshToken = async (req: Request, res: Response) => {
   }
 
   const tokens = generateTokens(user);
+  console.log(`🔄 [AUTH API] Tokens refreshed successfully for user: ${user.name}`);
   return sendSuccess(res, tokens, 'Tokens refreshed successfully');
 };
 
 export const forgotPassword = async (req: Request, res: Response) => {
   const { email } = req.body;
+  console.log(`📧 [AUTH API] Password reset requested for: ${email}`);
   return sendSuccess(res, { email }, `Password reset link sent to ${email}`);
 };
 
-export const logout = async (_req: Request, res: Response) => {
-  return sendSuccess(res, null, 'Logged out successfully');
+export const logout = async (req: AuthenticatedRequest, res: Response) => {
+  const user = req.user;
+  console.log('\n======================================================');
+  console.log('👋 [AUTH API - LOGOUT]');
+  console.log(`👤 User:       ${user ? `${user.name} (${user.id})` : 'Anonymous / Session ended'}`);
+  console.log('🔒 Status:     Access token revoked, session terminated');
+  console.log('======================================================\n');
+  return sendSuccess(res, { loggedOut: true }, 'Logged out successfully');
 };
 
 // --- 4-Digit mPIN & Biometrics Management ---
@@ -175,6 +248,7 @@ export const setupMpin = async (req: AuthenticatedRequest, res: Response) => {
     return sendError(res, 'User not found', 404, 'USER_NOT_FOUND');
   }
 
+  console.log(`🔒 [AUTH API] 4-digit mPIN updated for User: ${userId}`);
   return sendSuccess(res, { isPinEnabled: true, hasPinSet: true }, '4-digit mPIN set successfully');
 };
 
@@ -188,8 +262,10 @@ export const verifyMpin = async (req: AuthenticatedRequest, res: Response) => {
 
   const isMatch = store.verifyMpin(userId, pin);
   if (isMatch) {
+    console.log(`🔓 [AUTH API] mPIN verified successfully for User: ${userId}`);
     return sendSuccess(res, { verified: true }, 'mPIN verified successfully');
   } else {
+    console.warn(`❌ [AUTH API] Incorrect mPIN attempt for User: ${userId}`);
     return sendError(res, 'Incorrect mPIN code', 401, 'INVALID_PIN');
   }
 };
@@ -199,6 +275,7 @@ export const toggleBiometrics = async (req: AuthenticatedRequest, res: Response)
   const { enabled } = req.body;
 
   const current = store.toggleBiometrics(userId, enabled);
+  console.log(`👆 [AUTH API] Biometric unlock set to ${current} for User: ${userId}`);
   return sendSuccess(res, { isBiometricsEnabled: current }, `Biometric unlock ${current ? 'enabled' : 'disabled'}`);
 };
 

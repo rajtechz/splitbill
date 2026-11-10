@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightColors, darkColors, ColorTokens } from './colors';
-import { typography } from './typography';
+import { typography, fontFamilies } from './typography';
 import { spacing, borderRadius } from './spacing';
 import { shadows } from './shadows';
 
@@ -11,6 +11,7 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 export interface Theme {
   colors: ColorTokens;
   typography: typeof typography;
+  fonts: typeof fontFamilies;
   spacing: typeof spacing;
   borderRadius: typeof borderRadius;
   shadows: typeof shadows;
@@ -46,6 +47,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const value: Theme = {
     colors,
     typography,
+    fonts: fontFamilies,
     spacing,
     borderRadius,
     shadows,
@@ -64,6 +66,7 @@ export const useTheme = (): Theme => {
     return {
       colors: lightColors,
       typography,
+      fonts: fontFamilies,
       spacing,
       borderRadius,
       shadows,

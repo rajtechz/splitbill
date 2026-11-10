@@ -14,9 +14,16 @@ import { useSecurityStore } from '../../store/useSecurityStore';
 interface PinSetupModalProps {
   visible: boolean;
   onClose: () => void;
+  onSuccess?: (newPin: string) => void;
+  isForgotMode?: boolean;
 }
 
-export const PinSetupModal: React.FC<PinSetupModalProps> = ({ visible, onClose }) => {
+export const PinSetupModal: React.FC<PinSetupModalProps> = ({
+  visible,
+  onClose,
+  onSuccess,
+  isForgotMode = false,
+}) => {
   const { colors, typography, spacing, borderRadius, shadows, isDark } = useTheme();
   const { setPin } = useSecurityStore();
 
@@ -45,8 +52,12 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({ visible, onClose }
         if (next === firstPin) {
           setTimeout(async () => {
             await setPin(next);
-            Alert.alert('mPIN Set Successfully', 'Your 4-digit mPIN has been saved. Your app is now password protected.');
+            Alert.alert(
+              isForgotMode ? 'mPIN Reset Successfully' : 'mPIN Set Successfully',
+              `Your new 4-digit mPIN has been saved and updated on your account.`
+            );
             handleReset();
+            onSuccess?.(next);
             onClose();
           }, 150);
         } else {
@@ -97,7 +108,11 @@ export const PinSetupModal: React.FC<PinSetupModalProps> = ({ visible, onClose }
             <View style={styles.headerRow}>
               <View>
                 <Text style={[typography.h3, { color: colors.textPrimary }]}>
-                  {step === 'create' ? 'Set New 4-Digit mPIN' : 'Confirm Your 4-Digit mPIN'}
+                  {step === 'create'
+                    ? isForgotMode
+                      ? 'Reset / Update 4-Digit mPIN'
+                      : 'Set New 4-Digit mPIN'
+                    : 'Confirm Your 4-Digit mPIN'}
                 </Text>
                 <Text style={[typography.caption, { color: colors.textSecondary }]}>
                   {step === 'create'

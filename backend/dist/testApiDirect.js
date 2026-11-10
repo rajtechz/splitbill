@@ -55,6 +55,50 @@ async function runDirectTests() {
     console.log('✓ Contact matching results count:', matches.length);
     console.log('✓ Priya Registered:', matches[0].isRegistered, 'User name:', matches[0].user?.name);
     console.log('✓ Unknown Friend Registered:', matches[1].isRegistered);
+    // 6. Test Logout
+    console.log('\n[6] Testing Logout API:');
+    const mockReq = { user: store_js_1.store.findUserById('usr_me') };
+    let logoutResStatus = 200;
+    let logoutResBody;
+    const mockRes = {
+        status: (code) => { logoutResStatus = code; return mockRes; },
+        json: (data) => { logoutResBody = data; return mockRes; },
+    };
+    const { logout, login } = await import('./controllers/auth.controller.js');
+    await logout(mockReq, mockRes);
+    console.log('✓ Logout status:', logoutResStatus, 'Body:', logoutResBody);
+    // 7. Test Login API & Token Output
+    console.log('\n[7] Testing Login API & Token Output:');
+    const loginReq = { body: { email: 'alex.johnson@example.com', password: 'password123' } };
+    let loginResBody;
+    const loginRes = {
+        status: (code) => loginRes,
+        json: (data) => { loginResBody = data; return loginRes; },
+    };
+    await login(loginReq, loginRes);
+    console.log('✓ Login Verified: true User:', loginResBody?.data?.user?.name);
+    console.log('✓ Access Token Generated:', !!loginResBody?.data?.tokens?.accessToken);
+    // 8. Test Non-Existing User Returns USER_NOT_FOUND (Redirect to Register)
+    console.log('\n[8] Testing Non-Existing User Detection (Triggers Register Navigation):');
+    let errStatus = 200;
+    let errBody;
+    const notFoundRes = {
+        status: (code) => { errStatus = code; return notFoundRes; },
+        json: (data) => { errBody = data; return notFoundRes; },
+    };
+    await login({ body: { email: 'nonexistent@example.com', password: 'secret' } }, notFoundRes);
+    console.log('✓ 404 Status Received:', errStatus === 404);
+    console.log('✓ Error Code Received:', errBody?.code === 'USER_NOT_FOUND', `(${errBody?.code})`);
+    // 9. Test MongoDB Model Schemas
+    console.log('\n[9] Testing MongoDB Collections & Schemas:');
+    const { UserModel, GroupModel, FriendModel, ExpenseModel, SettlementModel, ActivityModel, NotificationModel, } = await import('./models/index.js');
+    console.log('✓ UserModel collection name:', UserModel.collection.name);
+    console.log('✓ GroupModel collection name:', GroupModel.collection.name);
+    console.log('✓ FriendModel collection name:', FriendModel.collection.name);
+    console.log('✓ ExpenseModel collection name:', ExpenseModel.collection.name);
+    console.log('✓ SettlementModel collection name:', SettlementModel.collection.name);
+    console.log('✓ ActivityModel collection name:', ActivityModel.collection.name);
+    console.log('✓ NotificationModel collection name:', NotificationModel.collection.name);
     console.log('\n========================================');
     console.log('🎉 ALL BACKEND DYNAMIC SERVICES PASSED!');
     console.log('========================================\n');

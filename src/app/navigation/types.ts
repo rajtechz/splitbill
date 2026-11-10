@@ -15,9 +15,9 @@ export type RootStackParamList = {
 
   // Auth flow
   Login: undefined;
-  Register: undefined;
+  Register: { email?: string; phone?: string; notice?: string } | undefined;
   ForgotPassword: undefined;
-  OtpVerification: { identifier: string };
+  OtpVerification: { identifier: string; generatedOtp?: string };
 
   // Groups
   GroupDetails: { groupId: string };

@@ -82,12 +82,24 @@ export const EditProfileScreen: React.FC = () => {
         {/* Avatar Photo with Camera Badge */}
         <View style={styles.avatarSection}>
           <TouchableOpacity
-            activeOpacity={0.8}
+            activeOpacity={0.7}
             onPress={() => setShowPhotoModal(true)}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={styles.avatarButton}
+            accessibilityRole="button"
+            accessibilityLabel="Change profile photo"
           >
             <Avatar name={name || 'User'} url={avatarUrl} size={88} />
-            <View style={[styles.cameraBadge, { backgroundColor: colors.primary }]}>
+            <View
+              pointerEvents="none"
+              style={[
+                styles.cameraBadge,
+                {
+                  backgroundColor: colors.primary,
+                  borderColor: colors.background,
+                },
+              ]}
+            >
               <Icon name="camera" size={16} color="#FFFFFF" />
             </View>
           </TouchableOpacity>

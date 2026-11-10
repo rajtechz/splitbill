@@ -9,10 +9,14 @@ import activityRoutes from './activity.routes.js';
 import notificationRoutes from './notification.routes.js';
 import searchRoutes from './search.routes.js';
 import configRoutes from './config.routes.js';
+import { logout } from '../controllers/auth.controller.js';
+import { optionalAuth } from '../middleware/auth.middleware.js';
 
 const apiRouter = Router();
 
 apiRouter.use('/auth', authRoutes);
+apiRouter.post('/logout', optionalAuth, logout);
+apiRouter.get('/logout', optionalAuth, logout);
 apiRouter.use('/users', userRoutes);
 apiRouter.use('/groups', groupRoutes);
 apiRouter.use('/friends', friendRoutes);

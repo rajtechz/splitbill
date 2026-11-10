@@ -195,6 +195,7 @@ export interface Activity {
 
 export interface AppNotification {
   id: string;
+  recipientId?: string;
   type:
     | 'expense_added'
     | 'expense_updated'

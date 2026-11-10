@@ -22,7 +22,8 @@ router.post('/otp/send', sendOtp);
 router.post('/otp/verify', verifyOtp);
 router.post('/refresh-token', refreshToken);
 router.post('/forgot-password', forgotPassword);
-router.post('/logout', logout);
+router.post('/logout', optionalAuth, logout);
+router.get('/logout', optionalAuth, logout);
 
 // 4-Digit mPIN & Biometrics
 router.post('/mpin/setup', optionalAuth, setupMpin);

@@ -20,6 +20,16 @@ import {
   SEED_ACTIVITIES,
   SEED_NOTIFICATIONS,
 } from './seedData.js';
+import {
+  UserModel,
+  GroupModel,
+  FriendModel,
+  ExpenseModel,
+  SettlementModel,
+  ActivityModel,
+  NotificationModel,
+} from '../models/index.js';
+import { isMongoConnected } from '../database/mongo.js';
 
 interface DatabaseSchema {
   users: User[];
@@ -76,6 +86,35 @@ class Store {
     return freshDb;
   }
 
+  public async reloadFromMongo(): Promise<void> {
+    if (!isMongoConnected()) return;
+    try {
+      const [users, groups, friends, expenses, settlements, activities, notifications] =
+        await Promise.all([
+          UserModel.find().lean(),
+          GroupModel.find().lean(),
+          FriendModel.find().lean(),
+          ExpenseModel.find().lean(),
+          SettlementModel.find().lean(),
+          ActivityModel.find().lean(),
+          NotificationModel.find().lean(),
+        ]);
+
+      if (users.length > 0) this.data.users = users as any;
+      if (groups.length > 0) this.data.groups = groups as any;
+      if (friends.length > 0) this.data.friends = friends as any;
+      if (expenses.length > 0) this.data.expenses = expenses as any;
+      if (settlements.length > 0) this.data.settlements = settlements as any;
+      if (activities.length > 0) this.data.activities = activities as any;
+      if (notifications.length > 0) this.data.notifications = notifications as any;
+
+      this.scheduleSave();
+      console.log('🔄 [SplitMate DB] Synchronized in-memory store with MongoDB collections');
+    } catch (err: any) {
+      console.warn('⚠️ [SplitMate DB] Could not sync from MongoDB:', err.message);
+    }
+  }
+
   private scheduleSave(dataToSave?: DatabaseSchema) {
     if (this.saveTimeout) {
       clearTimeout(this.saveTimeout);
@@ -114,6 +153,12 @@ class Store {
   createUser(user: User): User {
     this.data.users.push(user);
     this.persist();
+
+    if (isMongoConnected()) {
+      UserModel.create(user).catch(err => {
+        console.warn('⚠️ [MONGODB WRITE ERROR - USER]', err.message);
+      });
+    }
     return user;
   }
 
@@ -126,6 +171,12 @@ class Store {
       updatedAt: new Date().toISOString(),
     };
     this.persist();
+
+    if (isMongoConnected()) {
+      UserModel.updateOne({ id }, { $set: updates }).catch(err => {
+        console.warn('⚠️ [MONGODB UPDATE ERROR - USER]', err.message);
+      });
+    }
     return this.data.users[idx];
   }
 
@@ -141,6 +192,12 @@ class Store {
   createGroup(group: Group): Group {
     this.data.groups.unshift(group);
     this.persist();
+
+    if (isMongoConnected()) {
+      GroupModel.create(group).catch(err => {
+        console.warn('⚠️ [MONGODB WRITE ERROR - GROUP]', err.message);
+      });
+    }
     return group;
   }
 
@@ -153,6 +210,12 @@ class Store {
       updatedAt: new Date().toISOString(),
     };
     this.persist();
+
+    if (isMongoConnected()) {
+      GroupModel.updateOne({ id }, { $set: updates }).catch(err => {
+        console.warn('⚠️ [MONGODB UPDATE ERROR - GROUP]', err.message);
+      });
+    }
     return this.data.groups[idx];
   }
 
@@ -160,6 +223,12 @@ class Store {
     const lenBefore = this.data.groups.length;
     this.data.groups = this.data.groups.filter(g => g.id !== id);
     this.persist();
+
+    if (isMongoConnected()) {
+      GroupModel.deleteOne({ id }).catch(err => {
+        console.warn('⚠️ [MONGODB DELETE ERROR - GROUP]', err.message);
+      });
+    }
     return this.data.groups.length < lenBefore;
   }
 
@@ -173,6 +242,13 @@ class Store {
       group.membersCount = group.members.length;
       group.updatedAt = new Date().toISOString();
       this.persist();
+
+      if (isMongoConnected()) {
+        GroupModel.updateOne(
+          { id: groupId },
+          { $set: { members: group.members, membersCount: group.membersCount, updatedAt: group.updatedAt } }
+        ).catch(() => {});
+      }
     }
     return group;
   }
@@ -185,6 +261,13 @@ class Store {
     group.membersCount = group.members.length;
     group.updatedAt = new Date().toISOString();
     this.persist();
+
+    if (isMongoConnected()) {
+      GroupModel.updateOne(
+        { id: groupId },
+        { $set: { members: group.members, membersCount: group.membersCount, updatedAt: group.updatedAt } }
+      ).catch(() => {});
+    }
     return group;
   }
 
@@ -200,6 +283,12 @@ class Store {
   createFriend(friend: Friend): Friend {
     this.data.friends.unshift(friend);
     this.persist();
+
+    if (isMongoConnected()) {
+      FriendModel.create(friend).catch(err => {
+        console.warn('⚠️ [MONGODB WRITE ERROR - FRIEND]', err.message);
+      });
+    }
     return friend;
   }
 
@@ -207,6 +296,12 @@ class Store {
     const lenBefore = this.data.friends.length;
     this.data.friends = this.data.friends.filter(f => f.id !== id);
     this.persist();
+
+    if (isMongoConnected()) {
+      FriendModel.deleteOne({ id }).catch(err => {
+        console.warn('⚠️ [MONGODB DELETE ERROR - FRIEND]', err.message);
+      });
+    }
     return this.data.friends.length < lenBefore;
   }
 
@@ -215,6 +310,10 @@ class Store {
     if (idx === -1) return null;
     this.data.friends[idx] = { ...this.data.friends[idx], ...updates };
     this.persist();
+
+    if (isMongoConnected()) {
+      FriendModel.updateOne({ id }, { $set: updates }).catch(() => {});
+    }
     return this.data.friends[idx];
   }
 
@@ -233,6 +332,12 @@ class Store {
   createExpense(expense: Expense): Expense {
     this.data.expenses.unshift(expense);
     this.persist();
+
+    if (isMongoConnected()) {
+      ExpenseModel.create(expense).catch(err => {
+        console.warn('⚠️ [MONGODB WRITE ERROR - EXPENSE]', err.message);
+      });
+    }
     return expense;
   }
 
@@ -245,6 +350,12 @@ class Store {
       updatedAt: new Date().toISOString(),
     };
     this.persist();
+
+    if (isMongoConnected()) {
+      ExpenseModel.updateOne({ id }, { $set: updates }).catch(err => {
+        console.warn('⚠️ [MONGODB UPDATE ERROR - EXPENSE]', err.message);
+      });
+    }
     return this.data.expenses[idx];
   }
 
@@ -252,6 +363,12 @@ class Store {
     const lenBefore = this.data.expenses.length;
     this.data.expenses = this.data.expenses.filter(e => e.id !== id);
     this.persist();
+
+    if (isMongoConnected()) {
+      ExpenseModel.deleteOne({ id }).catch(err => {
+        console.warn('⚠️ [MONGODB DELETE ERROR - EXPENSE]', err.message);
+      });
+    }
     return this.data.expenses.length < lenBefore;
   }
 
@@ -266,6 +383,13 @@ class Store {
     expense.commentsCount = expense.comments.length;
     expense.updatedAt = new Date().toISOString();
     this.persist();
+
+    if (isMongoConnected()) {
+      ExpenseModel.updateOne(
+        { id: expenseId },
+        { $set: { comments: expense.comments, commentsCount: expense.commentsCount, updatedAt: expense.updatedAt } }
+      ).catch(() => {});
+    }
     return expense;
   }
 
@@ -284,6 +408,12 @@ class Store {
   createSettlement(settlement: Settlement): Settlement {
     this.data.settlements.unshift(settlement);
     this.persist();
+
+    if (isMongoConnected()) {
+      SettlementModel.create(settlement).catch(err => {
+        console.warn('⚠️ [MONGODB WRITE ERROR - SETTLEMENT]', err.message);
+      });
+    }
     return settlement;
   }
 
@@ -292,6 +422,12 @@ class Store {
     if (!settlement) return null;
     settlement.status = status;
     this.persist();
+
+    if (isMongoConnected()) {
+      SettlementModel.updateOne({ id }, { $set: { status } }).catch(err => {
+        console.warn('⚠️ [MONGODB UPDATE ERROR - SETTLEMENT]', err.message);
+      });
+    }
     return settlement;
   }
 
@@ -303,6 +439,12 @@ class Store {
   createActivity(activity: Activity): Activity {
     this.data.activities.unshift(activity);
     this.persist();
+
+    if (isMongoConnected()) {
+      ActivityModel.create(activity).catch(err => {
+        console.warn('⚠️ [MONGODB WRITE ERROR - ACTIVITY]', err.message);
+      });
+    }
     return activity;
   }
 
@@ -316,6 +458,10 @@ class Store {
     if (!notif) return false;
     notif.read = true;
     this.persist();
+
+    if (isMongoConnected()) {
+      NotificationModel.updateOne({ id }, { $set: { read: true } }).catch(() => {});
+    }
     return true;
   }
 
@@ -324,11 +470,21 @@ class Store {
       notif.read = true;
     }
     this.persist();
+
+    if (isMongoConnected()) {
+      NotificationModel.updateMany({}, { $set: { read: true } }).catch(() => {});
+    }
   }
 
   createNotification(notif: AppNotification): AppNotification {
     this.data.notifications.unshift(notif);
     this.persist();
+
+    if (isMongoConnected()) {
+      NotificationModel.create(notif).catch(err => {
+        console.warn('⚠️ [MONGODB WRITE ERROR - NOTIFICATION]', err.message);
+      });
+    }
     return notif;
   }
 
@@ -339,6 +495,10 @@ class Store {
     user.mPin = pin;
     user.isPinEnabled = true;
     this.persist();
+
+    if (isMongoConnected()) {
+      UserModel.updateOne({ id: userId }, { $set: { mPin: pin, isPinEnabled: true } }).catch(() => {});
+    }
     return true;
   }
 
@@ -354,6 +514,10 @@ class Store {
     if (!user) return false;
     user.isBiometricsEnabled = enabled !== undefined ? enabled : !user.isBiometricsEnabled;
     this.persist();
+
+    if (isMongoConnected()) {
+      UserModel.updateOne({ id: userId }, { $set: { isBiometricsEnabled: user.isBiometricsEnabled } }).catch(() => {});
+    }
     return user.isBiometricsEnabled ?? true;
   }
 

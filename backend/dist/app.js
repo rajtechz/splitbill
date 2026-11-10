@@ -27,15 +27,56 @@ const createApp = () => {
         catch { }
     }
     app.use('/uploads', express_1.default.static(uploadsDir));
-    // Request logger
-    app.use((req, res, next) => {
-        const start = Date.now();
-        res.on('finish', () => {
-            const duration = Date.now() - start;
-            console.log(`[API] ${req.method} ${req.originalUrl} - ${res.statusCode} (${duration}ms)`);
+    // Development Mode Logger: Intercept & Console each and every request & response
+    if (index_js_1.config.nodeEnv !== 'production') {
+        app.use((req, res, next) => {
+            const start = Date.now();
+            const originalSend = res.send;
+            let responseBody;
+            res.send = function (body) {
+                responseBody = body;
+                return originalSend.apply(res, arguments);
+            };
+            res.on('finish', () => {
+                const duration = Date.now() - start;
+                const isError = res.statusCode >= 400;
+                const icon = isError ? '❌' : '✅';
+                console.log(`\n======================================================`);
+                console.log(`${icon} [API] ${req.method} ${req.originalUrl} -> Status ${res.statusCode} (${duration}ms)`);
+                if (req.query && Object.keys(req.query).length > 0) {
+                    console.log(`🔍 Query:`, JSON.stringify(req.query, null, 2));
+                }
+                if (req.body && Object.keys(req.body).length > 0) {
+                    console.log(`📥 Request Body:`, JSON.stringify(req.body, null, 2));
+                }
+                if (responseBody) {
+                    try {
+                        const parsed = typeof responseBody === 'string' ? JSON.parse(responseBody) : responseBody;
+                        console.log(`📤 Response Body:`, JSON.stringify(parsed, null, 2));
+                    }
+                    catch {
+                        const preview = typeof responseBody === 'string' && responseBody.length > 250
+                            ? responseBody.slice(0, 250) + '... (truncated)'
+                            : responseBody;
+                        console.log(`📤 Response Body:`, preview);
+                    }
+                }
+                console.log(`======================================================\n`);
+            });
+            next();
         });
-        next();
-    });
+    }
+    else {
+        // Standard minimal production logger
+        app.use((req, res, next) => {
+            const start = Date.now();
+            res.on('finish', () => {
+                const duration = Date.now() - start;
+                console.log(`[API] ${req.method} ${req.originalUrl} - ${res.statusCode} (${duration}ms)`);
+            });
+            next();
+        });
+    }
     // Health check endpoints (supports both /health and /api/v1/health)
     const healthCheck = (_req, res) => {
         return (0, response_js_1.sendSuccess)(res, {

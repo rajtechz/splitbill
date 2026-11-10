@@ -53,11 +53,22 @@ export const PhotoPickerModal: React.FC<PhotoPickerModalProps> = ({
     onClose();
   };
 
+  const handleRemovePhoto = () => {
+    onSelectPhoto('');
+    onClose();
+  };
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity activeOpacity={1} onPress={onClose} style={styles.overlay}>
+      <View style={styles.overlay}>
+        {/* Backdrop tap dismiss */}
         <TouchableOpacity
           activeOpacity={1}
+          onPress={onClose}
+          style={StyleSheet.absoluteFill}
+        />
+
+        <View
           style={[
             styles.sheet,
             {
@@ -82,7 +93,7 @@ export const PhotoPickerModal: React.FC<PhotoPickerModalProps> = ({
           {/* Action Options */}
           <View style={styles.actionsRow}>
             <TouchableOpacity
-              activeOpacity={0.8}
+              activeOpacity={0.7}
               onPress={handleCamera}
               style={[styles.actionBtn, { backgroundColor: colors.surfaceVariant, borderRadius: borderRadius.lg }]}
             >
@@ -98,7 +109,7 @@ export const PhotoPickerModal: React.FC<PhotoPickerModalProps> = ({
             </TouchableOpacity>
 
             <TouchableOpacity
-              activeOpacity={0.8}
+              activeOpacity={0.7}
               onPress={handleGallery}
               style={[styles.actionBtn, { backgroundColor: colors.surfaceVariant, borderRadius: borderRadius.lg }]}
             >
@@ -132,6 +143,16 @@ export const PhotoPickerModal: React.FC<PhotoPickerModalProps> = ({
             ))}
           </View>
 
+          {/* Remove / Reset to Initials */}
+          <TouchableOpacity
+            onPress={handleRemovePhoto}
+            style={[styles.removeBtn, { borderColor: colors.danger, borderRadius: borderRadius.lg, marginBottom: 10 }]}
+          >
+            <Text style={[typography.buttonMedium, { color: colors.danger }]}>
+              Remove Photo (Use Initials)
+            </Text>
+          </TouchableOpacity>
+
           {/* Cancel button */}
           <TouchableOpacity
             onPress={onClose}
@@ -141,8 +162,8 @@ export const PhotoPickerModal: React.FC<PhotoPickerModalProps> = ({
               Cancel
             </Text>
           </TouchableOpacity>
-        </TouchableOpacity>
-      </TouchableOpacity>
+        </View>
+      </View>
     </Modal>
   );
 };
@@ -201,6 +222,11 @@ const styles = StyleSheet.create({
   cancelBtn: {
     borderWidth: 1,
     paddingVertical: 12,
+    alignItems: 'center',
+  },
+  removeBtn: {
+    borderWidth: 1,
+    paddingVertical: 10,
     alignItems: 'center',
   },
 });
