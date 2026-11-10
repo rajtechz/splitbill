@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { ThemeProvider, useTheme } from '../../theme';
+import { storage } from '../../services/storage';
+import { updateConfig } from '../config';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,6 +22,26 @@ const ThemedStatusBar: React.FC = () => {
 };
 
 export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  useEffect(() => {
+    const loadPersistedConfig = async () => {
+      try {
+        const [savedUrl, savedUseMock] = await Promise.all([
+          storage.getApiBaseUrl(),
+          storage.getUseMockApi(),
+        ]);
+        if (savedUrl) {
+          updateConfig({ apiBaseUrl: savedUrl });
+        }
+        if (savedUseMock !== null) {
+          updateConfig({ useMockApi: savedUseMock });
+        }
+      } catch (e) {
+        console.warn('Failed to load persisted backend config', e);
+      }
+    };
+    loadPersistedConfig();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>

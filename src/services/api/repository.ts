@@ -20,6 +20,8 @@ import {
 } from './mockData';
 import { storage } from '../storage';
 import { calculateBalances, calculateUserBalance } from '../..//features/balances/calculations/debtEngine';
+import { config } from '../../app/config';
+import { HttpRepository } from './httpRepository';
 
 export interface ISplitMateRepository {
   getCurrentUser(): Promise<User>;
@@ -490,4 +492,142 @@ class LocalPersistentRepository implements ISplitMateRepository {
   }
 }
 
-export const repository: ISplitMateRepository = new LocalPersistentRepository();
+export class HybridSplitMateRepository implements ISplitMateRepository {
+  private localRepo = new LocalPersistentRepository();
+  private httpRepo = new HttpRepository();
+
+  private async executeWithFallback<T>(
+    operation: (repo: ISplitMateRepository) => Promise<T>,
+    opName: string
+  ): Promise<T> {
+    if (config.useMockApi) {
+      return operation(this.localRepo);
+    }
+    try {
+      return await operation(this.httpRepo);
+    } catch (error: any) {
+      // If network is offline or local dev backend server is not running yet
+      if (
+        error?.code === 'NETWORK_ERROR' ||
+        error?.message?.includes('Network error') ||
+        error?.message?.includes('Network Error')
+      ) {
+        console.warn(
+          `[SplitMate] Backend server unreachable at ${config.apiBaseUrl} during ${opName}. Auto-fallback to local offline repository.`
+        );
+        return operation(this.localRepo);
+      }
+      throw error;
+    }
+  }
+
+  getCurrentUser(): Promise<User> {
+    return this.executeWithFallback(r => r.getCurrentUser(), 'getCurrentUser');
+  }
+
+  updateUserProfile(data: Partial<User>): Promise<User> {
+    return this.executeWithFallback(r => r.updateUserProfile(data), 'updateUserProfile');
+  }
+
+  getGroups(): Promise<Group[]> {
+    return this.executeWithFallback(r => r.getGroups(), 'getGroups');
+  }
+
+  getGroupById(id: string): Promise<Group | null> {
+    return this.executeWithFallback(r => r.getGroupById(id), 'getGroupById');
+  }
+
+  createGroup(data: Omit<Group, 'id' | 'createdAt' | 'totalSpending' | 'userBalance'>): Promise<Group> {
+    return this.executeWithFallback(r => r.createGroup(data), 'createGroup');
+  }
+
+  updateGroup(id: string, data: Partial<Group>): Promise<Group> {
+    return this.executeWithFallback(r => r.updateGroup(id, data), 'updateGroup');
+  }
+
+  deleteGroup(id: string): Promise<boolean> {
+    return this.executeWithFallback(r => r.deleteGroup(id), 'deleteGroup');
+  }
+
+  addMemberToGroup(groupId: string, member: GroupMember): Promise<Group> {
+    return this.executeWithFallback(r => r.addMemberToGroup(groupId, member), 'addMemberToGroup');
+  }
+
+  removeMemberFromGroup(groupId: string, userId: string): Promise<Group> {
+    return this.executeWithFallback(r => r.removeMemberFromGroup(groupId, userId), 'removeMemberFromGroup');
+  }
+
+  getFriends(): Promise<Friend[]> {
+    return this.executeWithFallback(r => r.getFriends(), 'getFriends');
+  }
+
+  addFriend(data: Omit<Friend, 'id' | 'createdAt' | 'netBalance'>): Promise<Friend> {
+    return this.executeWithFallback(r => r.addFriend(data), 'addFriend');
+  }
+
+  removeFriend(id: string): Promise<boolean> {
+    return this.executeWithFallback(r => r.removeFriend(id), 'removeFriend');
+  }
+
+  getExpenses(groupId?: string): Promise<Expense[]> {
+    return this.executeWithFallback(r => r.getExpenses(groupId), 'getExpenses');
+  }
+
+  getExpenseById(id: string): Promise<Expense | null> {
+    return this.executeWithFallback(r => r.getExpenseById(id), 'getExpenseById');
+  }
+
+  createExpense(data: Omit<Expense, 'id' | 'createdAt'>): Promise<Expense> {
+    return this.executeWithFallback(r => r.createExpense(data), 'createExpense');
+  }
+
+  updateExpense(id: string, data: Partial<Expense>): Promise<Expense> {
+    return this.executeWithFallback(r => r.updateExpense(id, data), 'updateExpense');
+  }
+
+  deleteExpense(id: string): Promise<boolean> {
+    return this.executeWithFallback(r => r.deleteExpense(id), 'deleteExpense');
+  }
+
+  addCommentToExpense(expenseId: string, text: string): Promise<Expense> {
+    return this.executeWithFallback(r => r.addCommentToExpense(expenseId, text), 'addCommentToExpense');
+  }
+
+  getSettlements(groupId?: string): Promise<Settlement[]> {
+    return this.executeWithFallback(r => r.getSettlements(groupId), 'getSettlements');
+  }
+
+  recordSettlement(data: Omit<Settlement, 'id' | 'createdAt'>): Promise<Settlement> {
+    return this.executeWithFallback(r => r.recordSettlement(data), 'recordSettlement');
+  }
+
+  confirmSettlement(id: string): Promise<Settlement> {
+    return this.executeWithFallback(r => r.confirmSettlement(id), 'confirmSettlement');
+  }
+
+  rejectSettlement(id: string): Promise<Settlement> {
+    return this.executeWithFallback(r => r.rejectSettlement(id), 'rejectSettlement');
+  }
+
+  getActivities(): Promise<Activity[]> {
+    return this.executeWithFallback(r => r.getActivities(), 'getActivities');
+  }
+
+  getNotifications(): Promise<AppNotification[]> {
+    return this.executeWithFallback(r => r.getNotifications(), 'getNotifications');
+  }
+
+  markNotificationAsRead(id: string): Promise<void> {
+    return this.executeWithFallback(r => r.markNotificationAsRead(id), 'markNotificationAsRead');
+  }
+
+  search(query: string): Promise<{
+    groups: Group[];
+    friends: Friend[];
+    expenses: Expense[];
+  }> {
+    return this.executeWithFallback(r => r.search(query), 'search');
+  }
+}
+
+export const repository: ISplitMateRepository = new HybridSplitMateRepository();

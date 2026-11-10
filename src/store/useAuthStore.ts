@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { User } from '../types';
 import { CURRENT_USER } from '../services/api/mockData';
 import { storage } from '../services/storage';
+import { authService } from '../features/auth/services/authService';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -11,13 +12,14 @@ interface AuthState {
 
   initializeAuth: () => Promise<void>;
   login: (identifier: string, passOrOtp: string) => Promise<boolean>;
-  register: (name: string, email: string, phone?: string) => Promise<boolean>;
+  register: (name: string, email: string, phone?: string, password?: string) => Promise<boolean>;
   logout: () => Promise<void>;
   updateUser: (updated: Partial<User>) => void;
+  setError: (err: string | null) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  isAuthenticated: true, // Default authenticated for frictionless developer / reviewer experience
+  isAuthenticated: true, // Default authenticated for frictionless developer experience
   currentUser: CURRENT_USER,
   isLoading: false,
   error: null,
@@ -29,7 +31,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (savedUser && token) {
         set({ isAuthenticated: true, currentUser: savedUser });
       } else {
-        // Fallback default dev session
         set({ isAuthenticated: true, currentUser: CURRENT_USER });
       }
     } catch {
@@ -37,51 +38,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  login: async (identifier: string, _passOrOtp: string) => {
+  login: async (identifier: string, passOrOtp: string) => {
     set({ isLoading: true, error: null });
     try {
-      // Simulate realistic API verification
-      await new Promise(res => setTimeout(() => res(true), 500));
-      const user: User = {
-        ...CURRENT_USER,
-        email: identifier.includes('@') ? identifier : CURRENT_USER.email,
-        phoneNumber: !identifier.includes('@') ? identifier : CURRENT_USER.phoneNumber,
-      };
-      await storage.setAuthToken('mock_jwt_token_' + Date.now());
-      await storage.setItem(storage.STORAGE_KEYS.USER_SESSION, user);
-      set({ isAuthenticated: true, currentUser: user, isLoading: false });
+      const isEmail = identifier.includes('@');
+      const response = isEmail
+        ? await authService.loginWithEmail({ email: identifier, password: passOrOtp })
+        : await authService.loginWithPhoneOtp(identifier, passOrOtp);
+
+      set({ isAuthenticated: true, currentUser: response.user, isLoading: false });
       return true;
     } catch (e: any) {
-      set({ error: e.message || 'Login failed', isLoading: false });
+      const msg = e.message || 'Login failed. Please check your credentials.';
+      set({ error: msg, isLoading: false });
       return false;
     }
   },
 
-  register: async (name: string, email: string, phone?: string) => {
+  register: async (name: string, email: string, phone?: string, password?: string) => {
     set({ isLoading: true, error: null });
     try {
-      await new Promise(res => setTimeout(() => res(true), 500));
-      const newUser: User = {
-        id: `usr_${Date.now()}`,
+      const response = await authService.register({
         name,
         email,
         phoneNumber: phone,
+        password,
         defaultCurrency: 'INR',
-        createdAt: new Date().toISOString(),
-      };
-      await storage.setAuthToken('mock_jwt_token_' + Date.now());
-      await storage.setItem(storage.STORAGE_KEYS.USER_SESSION, newUser);
-      set({ isAuthenticated: true, currentUser: newUser, isLoading: false });
+      });
+      set({ isAuthenticated: true, currentUser: response.user, isLoading: false });
       return true;
     } catch (e: any) {
-      set({ error: e.message || 'Registration failed', isLoading: false });
+      const msg = e.message || 'Registration failed. Please try again.';
+      set({ error: msg, isLoading: false });
       return false;
     }
   },
 
   logout: async () => {
-    await storage.clearAuth();
-    set({ isAuthenticated: false, currentUser: null });
+    try {
+      await authService.logout();
+    } finally {
+      set({ isAuthenticated: false, currentUser: null, error: null });
+    }
   },
 
   updateUser: (updated: Partial<User>) => {
@@ -91,5 +89,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ currentUser: next });
       storage.setItem(storage.STORAGE_KEYS.USER_SESSION, next).catch(() => {});
     }
+  },
+
+  setError: (err: string | null) => {
+    set({ error: err });
   },
 }));

@@ -3,10 +3,15 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "android": "react-native run-android",
-    "ios": "react-native run-ios",
+    "android": "react-native run-android --port 8082",
+    "android:8082": "react-native run-android --port 8082",
+    "ios": "react-native run-ios --port 8082",
+    "ios:8082": "react-native run-ios --port 8082",
     "lint": "eslint .",
-    "start": "react-native start",
+    "start": "react-native start --port 8082",
+    "start:8082": "react-native start --port 8082",
+    "kill:8081": "lsof -ti:8081 | xargs kill -9 2>/dev/null || true",
+    "kill:8082": "lsof -ti:8082 | xargs kill -9 2>/dev/null || true",
     "test": "jest"
   },
   "dependencies": {

@@ -2,7 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEYS = {
   AUTH_TOKEN: '@splitmate_auth_token',
+  REFRESH_TOKEN: '@splitmate_refresh_token',
   USER_SESSION: '@splitmate_user_session',
+  API_BASE_URL: '@splitmate_api_base_url',
+  USE_MOCK_API: '@splitmate_use_mock_api',
   OFFLINE_MUTATION_QUEUE: '@splitmate_offline_queue',
   GROUPS_CACHE: '@splitmate_cache_groups',
   EXPENSES_CACHE: '@splitmate_cache_expenses',
@@ -28,12 +31,73 @@ export const storage = {
     }
   },
 
+  async getRefreshToken(): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+    } catch {
+      return null;
+    }
+  },
+
+  async setRefreshToken(token: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, token);
+    } catch (e) {
+      console.warn('Failed to set refresh token', e);
+    }
+  },
+
+  async setTokens(tokens: { accessToken: string; refreshToken?: string }): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, tokens.accessToken);
+      if (tokens.refreshToken) {
+        await AsyncStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken);
+      }
+    } catch (e) {
+      console.warn('Failed to set tokens', e);
+    }
+  },
+
   async clearAuth(): Promise<void> {
     try {
       await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+      await AsyncStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
       await AsyncStorage.removeItem(STORAGE_KEYS.USER_SESSION);
     } catch (e) {
       console.warn('Failed to clear auth', e);
+    }
+  },
+
+  async getApiBaseUrl(): Promise<string | null> {
+    try {
+      return await AsyncStorage.getItem(STORAGE_KEYS.API_BASE_URL);
+    } catch {
+      return null;
+    }
+  },
+
+  async setApiBaseUrl(url: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.API_BASE_URL, url);
+    } catch (e) {
+      console.warn('Failed to set API base URL', e);
+    }
+  },
+
+  async getUseMockApi(): Promise<boolean | null> {
+    try {
+      const val = await AsyncStorage.getItem(STORAGE_KEYS.USE_MOCK_API);
+      return val !== null ? JSON.parse(val) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  async setUseMockApi(useMock: boolean): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.USE_MOCK_API, JSON.stringify(useMock));
+    } catch (e) {
+      console.warn('Failed to set useMockApi preference', e);
     }
   },
 

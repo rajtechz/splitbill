@@ -16,6 +16,8 @@ import { AppHeader } from '../../../components/common/AppHeader';
 import { Avatar } from '../../../components/avatars/Avatar';
 import { Icon } from '../../../components/common/Icon';
 import { ConfirmationModal } from '../../../components/modals/ConfirmationModal';
+import { BackendSettingsModal } from '../../../components/modals/BackendSettingsModal';
+import { config } from '../../../app/config';
 import { SUPPORTED_CURRENCIES } from '../../../types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -27,6 +29,7 @@ export const ProfileScreen: React.FC = () => {
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showBackendModal, setShowBackendModal] = useState(false);
 
   const handleLogout = async () => {
     setShowLogoutModal(false);
@@ -202,24 +205,38 @@ export const ProfileScreen: React.FC = () => {
 
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
-          <View style={styles.settingRow}>
-            <View style={[styles.settingIcon, { backgroundColor: colors.secondaryLight }]}>
-              <Icon name="refresh" size={18} color={colors.primary} />
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setShowBackendModal(true)}
+            style={styles.settingRow}
+          >
+            <View style={[styles.settingIcon, { backgroundColor: colors.primaryLight }]}>
+              <Icon name="settings" size={18} color={colors.primary} />
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                Offline Sync Engine
+                Backend & Server API
               </Text>
               <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                Instant offline writes with idempotency keys
+                {config.useMockApi ? 'Mock Adapter Active' : `Live REST API: ${config.apiBaseUrl}`}
               </Text>
             </View>
-            <View style={[styles.currencyBadge, { backgroundColor: colors.successLight }]}>
-              <Text style={[typography.caption, { color: colors.success, fontWeight: '700' }]}>
-                Online
+            <View
+              style={[
+                styles.currencyBadge,
+                { backgroundColor: config.useMockApi ? colors.warningLight : colors.successLight },
+              ]}
+            >
+              <Text
+                style={[
+                  typography.caption,
+                  { color: config.useMockApi ? colors.warning : colors.success, fontWeight: '700' },
+                ]}
+              >
+                {config.useMockApi ? 'Mock Mode' : 'Live Server'}
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Logout Button */}
@@ -261,6 +278,12 @@ export const ProfileScreen: React.FC = () => {
         isDestructive
         onConfirm={handleLogout}
         onCancel={() => setShowLogoutModal(false)}
+      />
+
+      {/* Backend & Server Integration Modal */}
+      <BackendSettingsModal
+        visible={showBackendModal}
+        onClose={() => setShowBackendModal(false)}
       />
     </View>
   );

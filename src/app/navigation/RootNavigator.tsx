@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useAppStore } from '../../store/useAppStore';
 import { BottomTabNavigator } from './BottomTabNavigator';
+import { SplashScreen } from '../../features/auth/screens/SplashScreen';
 
 // Auth Screens
 import { LoginScreen } from '../../features/auth/screens/LoginScreen';
@@ -36,11 +37,16 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export const RootNavigator: React.FC = () => {
   const { isAuthenticated, initializeAuth } = useAuthStore();
   const { loadInitialData } = useAppStore();
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     initializeAuth();
     loadInitialData();
   }, [initializeAuth, loadInitialData]);
+
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>

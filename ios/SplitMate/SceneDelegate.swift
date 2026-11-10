@@ -48,9 +48,11 @@ class SceneDelegate: RCTDefaultReactNativeFactoryDelegate, UIWindowSceneDelegate
 
   override func bundleURL() -> URL? {
     #if DEBUG
-    RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
+    let provider = RCTBundleURLProvider.sharedSettings()
+    provider.jsLocation = "localhost:8082"
+    return provider.jsBundleURL(forBundleRoot: "index")
     #else
-    Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+    return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
     #endif
   }
 }
