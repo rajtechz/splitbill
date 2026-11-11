@@ -7,6 +7,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { v2 as cloudinary } from 'cloudinary';
 
 export interface UploadOptions {
   fileName?: string;
@@ -75,6 +76,59 @@ export class LocalStorageProvider implements IStorageProvider {
   }
 }
 
+export class CloudinaryStorageProvider implements IStorageProvider {
+  private local = new LocalStorageProvider();
+
+  constructor() {
+    if (process.env.CLOUDINARY_CLOUD_NAME) {
+      cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+        secure: true,
+      });
+      console.log('☁️ [CLOUDINARY] Connected to cloud storage for receipts & avatars:', process.env.CLOUDINARY_CLOUD_NAME);
+    }
+  }
+
+  async uploadBase64(base64Data: string, prefix: string, options?: UploadOptions): Promise<string> {
+    if (!process.env.CLOUDINARY_CLOUD_NAME) {
+      return this.local.uploadBase64(base64Data, prefix, options);
+    }
+
+    try {
+      const dataUri = base64Data.startsWith('data:')
+        ? base64Data
+        : `data:${options?.mimeType || 'image/jpeg'};base64,${base64Data}`;
+
+      const res = await cloudinary.uploader.upload(dataUri, {
+        folder: `splitmate/${prefix}`,
+        resource_type: 'auto',
+      });
+
+      return res.secure_url;
+    } catch (err: any) {
+      console.warn('⚠️ [CLOUDINARY UPLOAD NOTICE - FALLBACK LOCAL]', err.message);
+      return this.local.uploadBase64(base64Data, prefix, options);
+    }
+  }
+
+  async deleteFile(fileUrl: string): Promise<boolean> {
+    try {
+      if (fileUrl.includes('cloudinary.com')) {
+        const parts = fileUrl.split('/');
+        const fileWithExt = parts.slice(-2).join('/');
+        const publicId = fileWithExt.substring(0, fileWithExt.lastIndexOf('.'));
+        await cloudinary.uploader.destroy(publicId);
+        return true;
+      }
+      return this.local.deleteFile(fileUrl);
+    } catch {
+      return false;
+    }
+  }
+}
+
 export class S3StorageProvider implements IStorageProvider {
   private local = new LocalStorageProvider();
 
@@ -82,7 +136,6 @@ export class S3StorageProvider implements IStorageProvider {
     if (!process.env.AWS_S3_BUCKET) {
       return this.local.uploadBase64(base64Data, prefix, options);
     }
-    // Future expansion: call s3.putObject(...)
     return this.local.uploadBase64(base64Data, prefix, options);
   }
 
@@ -91,5 +144,21 @@ export class S3StorageProvider implements IStorageProvider {
   }
 }
 
-export const storageProvider: IStorageProvider = new LocalStorageProvider();
+export const getStorageProvider = (): IStorageProvider => {
+  const provider = (process.env.STORAGE_PROVIDER || 'local').toLowerCase();
+  switch (provider) {
+    case 'cloudinary':
+      return new CloudinaryStorageProvider();
+    case 's3':
+      return new S3StorageProvider();
+    case 'local':
+    default:
+      if (process.env.CLOUDINARY_CLOUD_NAME) {
+        return new CloudinaryStorageProvider();
+      }
+      return new LocalStorageProvider();
+  }
+};
+
+export const storageProvider: IStorageProvider = getStorageProvider();
 

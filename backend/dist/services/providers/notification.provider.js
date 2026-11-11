@@ -6,9 +6,40 @@
  *  - Firebase Cloud Messaging (FCM) Stub (Plug & play for native push tokens)
  *  - Expo Push Stub (Plug & play for mobile notifications)
  */
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.notificationProvider = exports.getNotificationProvider = exports.FcmNotificationProvider = exports.MockNotificationProvider = void 0;
 const store_js_1 = require("../../data/store.js");
+const app_1 = require("firebase-admin/app");
+const messaging_1 = require("firebase-admin/messaging");
+const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
+let firebaseInitialized = false;
+function initFirebaseAdmin() {
+    if (firebaseInitialized)
+        return true;
+    try {
+        const serviceAccountPath = path_1.default.resolve(process.cwd(), 'service-account.json');
+        if (fs_1.default.existsSync(serviceAccountPath)) {
+            const sa = JSON.parse(fs_1.default.readFileSync(serviceAccountPath, 'utf8'));
+            if ((0, app_1.getApps)().length === 0) {
+                (0, app_1.initializeApp)({
+                    credential: (0, app_1.cert)(sa),
+                    projectId: sa.project_id || process.env.FIREBASE_PROJECT_ID,
+                });
+            }
+            firebaseInitialized = true;
+            console.log(`🔥 [FIREBASE ADMIN] Connected successfully to project: ${sa.project_id}`);
+            return true;
+        }
+    }
+    catch (err) {
+        console.warn('⚠️ [FIREBASE ADMIN INIT WARN]', err.message);
+    }
+    return false;
+}
 /**
  * Mock Push Notification Provider
  * Saves notification to persistent store and logs to terminal
@@ -47,20 +78,41 @@ class MockNotificationProvider {
 }
 exports.MockNotificationProvider = MockNotificationProvider;
 /**
- * FCM Push Notification Provider Stub
+ * FCM Push Notification Provider with Firebase Admin SDK
  */
 class FcmNotificationProvider {
     fallback = new MockNotificationProvider();
+    constructor() {
+        initFirebaseAdmin();
+    }
     async sendPush(payload) {
-        // If FCM credentials are not configured, fallback gracefully to mock store
-        if (!process.env.FIREBASE_PROJECT_ID) {
-            return this.fallback.sendPush(payload);
+        // 1. Save notification in database for the in-app notification center
+        const result = await this.fallback.sendPush(payload);
+        // 2. If Firebase Admin is initialized, send native push notification
+        if (initFirebaseAdmin()) {
+            try {
+                const topic = `user_${payload.userId.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+                await (0, messaging_1.getMessaging)().send({
+                    topic,
+                    notification: {
+                        title: payload.title,
+                        body: payload.body,
+                    },
+                    data: payload.actionData || {},
+                });
+                console.log(`🚀 [FCM PUSH DISPATCHED] Sent to topic: ${topic}`);
+            }
+            catch (err) {
+                console.warn('ℹ️ [FCM PUSH NOTICE]', err.message);
+            }
         }
-        // Future expansion: call admin.messaging().send(...)
-        return this.fallback.sendPush(payload);
+        return result;
     }
     async sendBatchPush(payloads) {
-        return this.fallback.sendBatchPush(payloads);
+        for (const p of payloads) {
+            await this.sendPush(p);
+        }
+        return { success: true, count: payloads.length };
     }
     async sendSms(phone, message) {
         return this.fallback.sendSms(phone, message);
@@ -68,13 +120,13 @@ class FcmNotificationProvider {
 }
 exports.FcmNotificationProvider = FcmNotificationProvider;
 const getNotificationProvider = () => {
-    const provider = (process.env.PUSH_PROVIDER || 'mock').toLowerCase();
+    const provider = (process.env.PUSH_PROVIDER || 'fcm').toLowerCase();
     switch (provider) {
-        case 'fcm':
-            return new FcmNotificationProvider();
         case 'mock':
-        default:
             return new MockNotificationProvider();
+        case 'fcm':
+        default:
+            return new FcmNotificationProvider();
     }
 };
 exports.getNotificationProvider = getNotificationProvider;

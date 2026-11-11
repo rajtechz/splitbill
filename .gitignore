@@ -1,6 +1,10 @@
-# OSX
-#
-.DS_Store
+# Security & Secrets
+*.env
+*.env.*
+!*.env.example
+*service-account*.json
+google-services.json
+GoogleService-Info.plist
 
 # Xcode
 #

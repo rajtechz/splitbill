@@ -8,6 +8,34 @@
 
 import { AppNotification } from '../../types/index.js';
 import { store } from '../../data/store.js';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
+import path from 'path';
+import fs from 'fs';
+
+let firebaseInitialized = false;
+
+function initFirebaseAdmin(): boolean {
+  if (firebaseInitialized) return true;
+  try {
+    const serviceAccountPath = path.resolve(process.cwd(), 'service-account.json');
+    if (fs.existsSync(serviceAccountPath)) {
+      const sa = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
+      if (getApps().length === 0) {
+        initializeApp({
+          credential: cert(sa),
+          projectId: sa.project_id || process.env.FIREBASE_PROJECT_ID,
+        });
+      }
+      firebaseInitialized = true;
+      console.log(`🔥 [FIREBASE ADMIN] Connected successfully to project: ${sa.project_id}`);
+      return true;
+    }
+  } catch (err: any) {
+    console.warn('⚠️ [FIREBASE ADMIN INIT WARN]', err.message);
+  }
+  return false;
+}
 
 export interface PushPayload {
   userId: string;
@@ -66,22 +94,45 @@ export class MockNotificationProvider implements INotificationProvider {
 }
 
 /**
- * FCM Push Notification Provider Stub
+ * FCM Push Notification Provider with Firebase Admin SDK
  */
 export class FcmNotificationProvider implements INotificationProvider {
   private fallback = new MockNotificationProvider();
 
+  constructor() {
+    initFirebaseAdmin();
+  }
+
   async sendPush(payload: PushPayload): Promise<{ success: boolean; id: string }> {
-    // If FCM credentials are not configured, fallback gracefully to mock store
-    if (!process.env.FIREBASE_PROJECT_ID) {
-      return this.fallback.sendPush(payload);
+    // 1. Save notification in database for the in-app notification center
+    const result = await this.fallback.sendPush(payload);
+
+    // 2. If Firebase Admin is initialized, send native push notification
+    if (initFirebaseAdmin()) {
+      try {
+        const topic = `user_${payload.userId.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+        await getMessaging().send({
+          topic,
+          notification: {
+            title: payload.title,
+            body: payload.body,
+          },
+          data: payload.actionData || {},
+        });
+        console.log(`🚀 [FCM PUSH DISPATCHED] Sent to topic: ${topic}`);
+      } catch (err: any) {
+        console.warn('ℹ️ [FCM PUSH NOTICE]', err.message);
+      }
     }
-    // Future expansion: call admin.messaging().send(...)
-    return this.fallback.sendPush(payload);
+
+    return result;
   }
 
   async sendBatchPush(payloads: PushPayload[]): Promise<{ success: boolean; count: number }> {
-    return this.fallback.sendBatchPush(payloads);
+    for (const p of payloads) {
+      await this.sendPush(p);
+    }
+    return { success: true, count: payloads.length };
   }
 
   async sendSms(phone: string, message: string): Promise<boolean> {
@@ -90,13 +141,13 @@ export class FcmNotificationProvider implements INotificationProvider {
 }
 
 export const getNotificationProvider = (): INotificationProvider => {
-  const provider = (process.env.PUSH_PROVIDER || 'mock').toLowerCase();
+  const provider = (process.env.PUSH_PROVIDER || 'fcm').toLowerCase();
   switch (provider) {
-    case 'fcm':
-      return new FcmNotificationProvider();
     case 'mock':
-    default:
       return new MockNotificationProvider();
+    case 'fcm':
+    default:
+      return new FcmNotificationProvider();
   }
 };
 

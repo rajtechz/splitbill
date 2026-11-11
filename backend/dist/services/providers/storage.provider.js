@@ -9,9 +9,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.storageProvider = exports.S3StorageProvider = exports.LocalStorageProvider = void 0;
+exports.storageProvider = exports.getStorageProvider = exports.S3StorageProvider = exports.CloudinaryStorageProvider = exports.LocalStorageProvider = void 0;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const cloudinary_1 = require("cloudinary");
 class LocalStorageProvider {
     uploadsDir;
     constructor() {
@@ -65,13 +66,61 @@ class LocalStorageProvider {
     }
 }
 exports.LocalStorageProvider = LocalStorageProvider;
+class CloudinaryStorageProvider {
+    local = new LocalStorageProvider();
+    constructor() {
+        if (process.env.CLOUDINARY_CLOUD_NAME) {
+            cloudinary_1.v2.config({
+                cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+                api_key: process.env.CLOUDINARY_API_KEY,
+                api_secret: process.env.CLOUDINARY_API_SECRET,
+                secure: true,
+            });
+            console.log('☁️ [CLOUDINARY] Connected to cloud storage for receipts & avatars:', process.env.CLOUDINARY_CLOUD_NAME);
+        }
+    }
+    async uploadBase64(base64Data, prefix, options) {
+        if (!process.env.CLOUDINARY_CLOUD_NAME) {
+            return this.local.uploadBase64(base64Data, prefix, options);
+        }
+        try {
+            const dataUri = base64Data.startsWith('data:')
+                ? base64Data
+                : `data:${options?.mimeType || 'image/jpeg'};base64,${base64Data}`;
+            const res = await cloudinary_1.v2.uploader.upload(dataUri, {
+                folder: `splitmate/${prefix}`,
+                resource_type: 'auto',
+            });
+            return res.secure_url;
+        }
+        catch (err) {
+            console.warn('⚠️ [CLOUDINARY UPLOAD NOTICE - FALLBACK LOCAL]', err.message);
+            return this.local.uploadBase64(base64Data, prefix, options);
+        }
+    }
+    async deleteFile(fileUrl) {
+        try {
+            if (fileUrl.includes('cloudinary.com')) {
+                const parts = fileUrl.split('/');
+                const fileWithExt = parts.slice(-2).join('/');
+                const publicId = fileWithExt.substring(0, fileWithExt.lastIndexOf('.'));
+                await cloudinary_1.v2.uploader.destroy(publicId);
+                return true;
+            }
+            return this.local.deleteFile(fileUrl);
+        }
+        catch {
+            return false;
+        }
+    }
+}
+exports.CloudinaryStorageProvider = CloudinaryStorageProvider;
 class S3StorageProvider {
     local = new LocalStorageProvider();
     async uploadBase64(base64Data, prefix, options) {
         if (!process.env.AWS_S3_BUCKET) {
             return this.local.uploadBase64(base64Data, prefix, options);
         }
-        // Future expansion: call s3.putObject(...)
         return this.local.uploadBase64(base64Data, prefix, options);
     }
     async deleteFile(fileUrl) {
@@ -79,4 +128,20 @@ class S3StorageProvider {
     }
 }
 exports.S3StorageProvider = S3StorageProvider;
-exports.storageProvider = new LocalStorageProvider();
+const getStorageProvider = () => {
+    const provider = (process.env.STORAGE_PROVIDER || 'local').toLowerCase();
+    switch (provider) {
+        case 'cloudinary':
+            return new CloudinaryStorageProvider();
+        case 's3':
+            return new S3StorageProvider();
+        case 'local':
+        default:
+            if (process.env.CLOUDINARY_CLOUD_NAME) {
+                return new CloudinaryStorageProvider();
+            }
+            return new LocalStorageProvider();
+    }
+};
+exports.getStorageProvider = getStorageProvider;
+exports.storageProvider = (0, exports.getStorageProvider)();
