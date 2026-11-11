@@ -1,11 +1,21 @@
 /* eslint-disable no-undef */
 
+const memoryStore = new Map();
 const mockStorage = {
-  getItem: jest.fn(() => Promise.resolve(null)),
-  setItem: jest.fn(() => Promise.resolve(null)),
-  removeItem: jest.fn(() => Promise.resolve(null)),
-  clear: jest.fn(() => Promise.resolve(null)),
-  getAllKeys: jest.fn(() => Promise.resolve([])),
+  getItem: jest.fn(key => Promise.resolve(memoryStore.has(key) ? memoryStore.get(key) : null)),
+  setItem: jest.fn((key, value) => {
+    memoryStore.set(key, String(value));
+    return Promise.resolve(null);
+  }),
+  removeItem: jest.fn(key => {
+    memoryStore.delete(key);
+    return Promise.resolve(null);
+  }),
+  clear: jest.fn(() => {
+    memoryStore.clear();
+    return Promise.resolve(null);
+  }),
+  getAllKeys: jest.fn(() => Promise.resolve(Array.from(memoryStore.keys()))),
 };
 
 jest.mock('@react-native-async-storage/async-storage', () => mockStorage);

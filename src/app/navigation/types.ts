@@ -49,4 +49,5 @@ export type RootStackParamList = {
   Search: undefined;
   EditProfile: undefined;
   Subscription: { triggerFeature?: ProFeature } | undefined;
+  Permissions: { isSettingsMode?: boolean } | undefined;
 };

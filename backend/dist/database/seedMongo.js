@@ -6,14 +6,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const mongo_js_1 = require("./mongo.js");
 const index_js_1 = require("../models/index.js");
 const mongoose_1 = __importDefault(require("mongoose"));
-const seed = async () => {
-    console.log('🍃 Connecting and syncing all data into MongoDB Compass...');
+const checkMongoStatus = async () => {
+    console.log('🍃 Connecting to MongoDB Compass at 127.0.0.1:27017/splitmate...');
     const ok = await (0, mongo_js_1.connectMongoDB)();
     if (!ok) {
-        console.error('❌ Failed to connect to MongoDB at 127.0.0.1:27017');
+        console.error('❌ Failed to connect to MongoDB');
         process.exit(1);
     }
-    console.log('\n📊 SplitMate Database Status in MongoDB Compass:');
+    console.log('\n📊 SplitMate Direct MongoDB Collections Status:');
     console.log(`📍 URI:        mongodb://127.0.0.1:27017/splitmate`);
     console.log(`📦 Database:   splitmate`);
     console.log('------------------------------------------------------');
@@ -25,11 +25,11 @@ const seed = async () => {
     console.log(`⚡ activities:    ${await index_js_1.ActivityModel.countDocuments()}`);
     console.log(`🔔 notifications: ${await index_js_1.NotificationModel.countDocuments()}`);
     console.log('------------------------------------------------------');
-    console.log('🎉 Open MongoDB Compass and refresh to see the "splitmate" database and all 7 collections!\n');
+    console.log('🎉 100% Direct MongoDB engine active (Zero db.json file storage).\n');
     await mongoose_1.default.disconnect();
     process.exit(0);
 };
-seed().catch(err => {
+checkMongoStatus().catch(err => {
     console.error(err);
     process.exit(1);
 });

@@ -30,6 +30,7 @@
     "react": "19.3.0",
     "react-hook-form": "^7.91.0",
     "react-native": "0.88.1",
+    "react-native-contacts": "^8.0.10",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-screens": "^4.30.1",
     "react-native-svg": "^15.16.1",

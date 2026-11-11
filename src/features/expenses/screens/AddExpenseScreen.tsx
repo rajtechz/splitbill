@@ -22,6 +22,8 @@ import { SplitMethodSelector } from '../../../components/inputs/SplitMethodSelec
 import { Avatar } from '../../../components/avatars/Avatar';
 import { Icon, IconName } from '../../../components/common/Icon';
 import { ProPaywallModal } from '../../../components/modals/ProPaywallModal';
+import { ContactsPickerModal } from '../../../components/modals/ContactsPickerModal';
+import { PhoneContact } from '../../../services/native/contactsService';
 import {
   ExpenseCategory,
   SplitMethod,
@@ -105,39 +107,69 @@ export const AddExpenseScreen: React.FC = () => {
 
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showContactsModal, setShowContactsModal] = useState(false);
+  const [customContacts, setCustomContacts] = useState<
+    { userId: string; name: string; avatarUrl?: string }[]
+  >([]);
 
   // Determine available participants
   const availableParticipants = useMemo(() => {
     const list: { userId: string; name: string; avatarUrl?: string }[] = [];
-    // Always include current user
     if (currentUser) {
       list.push({ userId: currentUser.id, name: currentUser.name, avatarUrl: currentUser.avatarUrl });
     }
+
+    const seenIds = new Set<string>([currentUser?.id || '']);
+    const seenNames = new Set<string>([(currentUser?.name || '').toLowerCase()]);
+
+    const addUnique = (item: { userId: string; name: string; avatarUrl?: string }) => {
+      const nameKey = item.name.trim().toLowerCase();
+      if (!seenIds.has(item.userId) && !seenNames.has(nameKey)) {
+        seenIds.add(item.userId);
+        seenNames.add(nameKey);
+        list.push(item);
+      }
+    };
 
     if (selectedGroupId) {
       const grp = groups.find(g => g.id === selectedGroupId);
       if (grp) {
         for (const m of grp.members) {
-          if (!list.some(p => p.userId === m.userId)) {
-            list.push({ userId: m.userId, name: m.name, avatarUrl: m.avatarUrl });
-          }
+          addUnique({ userId: m.userId, name: m.name, avatarUrl: m.avatarUrl });
         }
       }
     } else if (preselectedFriendId) {
       const fr = friends.find(f => f.id === preselectedFriendId);
-      if (fr && !list.some(p => p.userId === fr.userId)) {
-        list.push({ userId: fr.userId, name: fr.name, avatarUrl: fr.avatarUrl });
+      if (fr) {
+        addUnique({ userId: fr.userId, name: fr.name, avatarUrl: fr.avatarUrl });
       }
     } else {
-      // Allow adding all active friends
+      // Allow adding active friends
       for (const fr of friends) {
-        if (!list.some(p => p.userId === fr.userId)) {
-          list.push({ userId: fr.userId, name: fr.name, avatarUrl: fr.avatarUrl });
-        }
+        addUnique({ userId: fr.userId, name: fr.name, avatarUrl: fr.avatarUrl });
       }
     }
+
+    for (const c of customContacts) {
+      addUnique(c);
+    }
+
     return list;
-  }, [selectedGroupId, preselectedFriendId, groups, friends, currentUser]);
+  }, [selectedGroupId, preselectedFriendId, groups, friends, currentUser, customContacts]);
+
+  const handleSelectContact = (contact: PhoneContact) => {
+    setShowContactsModal(false);
+    const contactUserId = `contact_${contact.id || Date.now()}`;
+    const newContact = {
+      userId: contactUserId,
+      name: contact.name,
+      avatarUrl: undefined,
+    };
+    setCustomContacts(prev => [...prev, newContact]);
+    setIncludedParticipantIds(prev =>
+      prev.includes(contactUserId) ? prev : [...prev, contactUserId]
+    );
+  };
 
   // Selected participant IDs for split
   const [includedParticipantIds, setIncludedParticipantIds] = useState<string[]>(
@@ -664,14 +696,46 @@ export const AddExpenseScreen: React.FC = () => {
         <SplitMethodSelector selectedMethod={splitMethod} onSelect={setSplitMethod} />
 
         {/* Participants Selection & Calculated Shares Breakdown */}
-        <Text
-          style={[
-            typography.caption,
-            { color: colors.textSecondary, marginTop: spacing.md, marginBottom: 8 },
-          ]}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginTop: spacing.md,
+            marginBottom: 8,
+          }}
         >
-          SPLIT BETWEEN ({includedParticipantIds.length} PEOPLE)
-        </Text>
+          <Text
+            style={[
+              typography.caption,
+              { color: colors.textSecondary },
+            ]}
+          >
+            SPLIT BETWEEN ({includedParticipantIds.length} PEOPLE)
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setShowContactsModal(true)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: colors.primaryLight,
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              borderRadius: borderRadius.full,
+            }}
+          >
+            <Icon name="phone" size={13} color={colors.primary} />
+            <Text
+              style={[
+                typography.caption,
+                { color: colors.primary, fontWeight: '700', marginLeft: 4 },
+              ]}
+            >
+              + From Contacts
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {availableParticipants.map(participant => {
           const isIncluded = includedParticipantIds.includes(participant.userId);
@@ -858,6 +922,13 @@ export const AddExpenseScreen: React.FC = () => {
         feature={proTriggerFeature}
         onClose={() => setShowProModal(false)}
         onNavigateToPlans={() => navigation.navigate('Subscription')}
+      />
+
+      {/* Device Contacts Picker Modal */}
+      <ContactsPickerModal
+        visible={showContactsModal}
+        onClose={() => setShowContactsModal(false)}
+        onSelectContact={handleSelectContact}
       />
     </View>
   );

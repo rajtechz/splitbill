@@ -12,6 +12,7 @@ const STORAGE_KEYS = {
   FRIENDS_CACHE: '@splitmate_cache_friends',
   ACTIVITIES_CACHE: '@splitmate_cache_activities',
   SETTLEMENTS_CACHE: '@splitmate_cache_settlements',
+  PERMISSIONS_ONBOARDING_COMPLETED: '@splitmate_permissions_onboarding_completed',
 };
 
 export const storage = {
@@ -93,9 +94,9 @@ export const storage = {
   async getUseMockApi(): Promise<boolean | null> {
     try {
       const val = await AsyncStorage.getItem(STORAGE_KEYS.USE_MOCK_API);
-      return val !== null ? JSON.parse(val) : null;
+      return val !== null ? JSON.parse(val) : false;
     } catch {
-      return null;
+      return false;
     }
   },
 

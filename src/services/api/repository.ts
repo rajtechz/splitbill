@@ -572,35 +572,13 @@ export class HybridSplitMateRepository implements ISplitMateRepository {
 
   private async executeWithFallback<T>(
     operation: (repo: ISplitMateRepository) => Promise<T>,
-    opName: string
+    _opName: string
   ): Promise<T> {
     if (config.useMockApi) {
       return operation(this.localRepo);
     }
-    try {
-      return await operation(this.httpRepo);
-    } catch (error: any) {
-      // If network is offline or local dev backend server is not running yet
-      const isNetworkIssue =
-        error?.code === 'NETWORK_ERROR' ||
-        error?.code === 'ECONNABORTED' ||
-        error?.code === 'ERR_NETWORK' ||
-        error?.code === 'ECONNREFUSED' ||
-        error?.code === 'ETIMEDOUT' ||
-        error?.message?.includes('Network error') ||
-        error?.message?.includes('Network Error') ||
-        error?.message?.includes('timeout') ||
-        error?.message?.includes('refused') ||
-        error?.message?.includes('No refresh token available');
-
-      if (isNetworkIssue) {
-        console.warn(
-          `[SplitMate] Backend server unreachable at ${config.apiBaseUrl} during ${opName}. Auto-fallback to local offline repository.`
-        );
-        return operation(this.localRepo);
-      }
-      throw error;
-    }
+    // Always use real live backend API (Zero mock data)
+    return await operation(this.httpRepo);
   }
 
   getCurrentUser(): Promise<User> {

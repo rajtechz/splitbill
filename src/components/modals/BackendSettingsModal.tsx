@@ -25,7 +25,7 @@ export const BackendSettingsModal: React.FC<BackendSettingsModalProps> = ({ visi
   const { colors, typography, spacing, borderRadius, shadows } = useTheme();
   const { refreshAll } = useAppStore();
 
-  const [useMock, setUseMock] = useState(config.useMockApi);
+  const [useMock, setUseMock] = useState(false);
   const [baseUrl, setBaseUrl] = useState(config.apiBaseUrl);
   const [testingStatus, setTestingStatus] = useState<{
     testing: boolean;
@@ -35,7 +35,7 @@ export const BackendSettingsModal: React.FC<BackendSettingsModalProps> = ({ visi
 
   useEffect(() => {
     if (visible) {
-      setUseMock(config.useMockApi);
+      setUseMock(false); // Always default to Live Backend (REST) with MongoDB
       setBaseUrl(config.apiBaseUrl);
       setTestingStatus({ testing: false });
     }
@@ -85,13 +85,13 @@ export const BackendSettingsModal: React.FC<BackendSettingsModalProps> = ({ visi
   const handleSave = async () => {
     const trimmed = baseUrl.trim();
     updateConfig({
-      useMockApi: useMock,
+      useMockApi: false, // Always live backend (never mock)
       apiBaseUrl: trimmed,
     });
     await storage.setApiBaseUrl(trimmed);
-    await storage.setUseMockApi(useMock);
+    await storage.setUseMockApi(false);
 
-    // Refresh store to load data from live backend or mock
+    // Refresh store to load data from live backend and MongoDB
     refreshAll().catch(() => {});
     onClose();
   };

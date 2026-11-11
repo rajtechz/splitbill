@@ -18,6 +18,8 @@ import { AppHeader } from '../../../components/common/AppHeader';
 import { Button } from '../../../components/buttons/Button';
 import { Avatar } from '../../../components/avatars/Avatar';
 import { Icon } from '../../../components/common/Icon';
+import { ContactsPickerModal } from '../../../components/modals/ContactsPickerModal';
+import { PhoneContact } from '../../../services/native/contactsService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type AddMemberRouteProp = RouteProp<RootStackParamList, 'AddGroupMember'>;
@@ -34,6 +36,24 @@ export const AddGroupMemberScreen: React.FC = () => {
   const [customName, setCustomName] = useState('');
   const [customEmail, setCustomEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showContactsModal, setShowContactsModal] = useState(false);
+
+  const handleSelectContact = async (contact: PhoneContact) => {
+    setShowContactsModal(false);
+    if (!group) return;
+    setLoading(true);
+    const email = contact.email || `${contact.phoneNumber?.replace(/[^0-9]/g, '') || Date.now()}@contact.splitmate`;
+    await repository.addMemberToGroup(groupId, {
+      userId: `contact_${contact.id || Date.now()}`,
+      name: contact.name,
+      email,
+      role: 'member',
+      joinedAt: new Date().toISOString(),
+    });
+    await refreshAll();
+    setLoading(false);
+    navigation.goBack();
+  };
 
   const existingMemberIds = group?.members.map(m => m.userId) || [];
   const availableFriends = friends.filter(f => !existingMemberIds.includes(f.userId));
@@ -116,9 +136,37 @@ export const AddGroupMemberScreen: React.FC = () => {
           </View>
         )}
 
+        {/* Quick add from mobile contacts */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => setShowContactsModal(true)}
+          style={[
+            styles.friendItem,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.primary,
+              borderRadius: borderRadius.md,
+              marginBottom: spacing.lg,
+            },
+          ]}
+        >
+          <View style={[styles.addIcon, { backgroundColor: colors.primaryLight, marginRight: 12 }]}>
+            <Icon name="phone" size={18} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[typography.titleMedium, { color: colors.primary, fontWeight: '700' }]}>
+              Select from Mobile Contacts
+            </Text>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              Pick anyone directly from your address book
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={18} color={colors.primary} />
+        </TouchableOpacity>
+
         {/* Or add by name & email */}
         <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 8 }]}>
-          OR ADD A NEW PERSON
+          OR ENTER MANUALLY
         </Text>
 
         <TextInput
@@ -166,6 +214,12 @@ export const AddGroupMemberScreen: React.FC = () => {
           disabled={!customName.trim() || !customEmail.trim()}
         />
       </ScrollView>
+
+      <ContactsPickerModal
+        visible={showContactsModal}
+        onClose={() => setShowContactsModal(false)}
+        onSelectContact={handleSelectContact}
+      />
     </View>
   );
 };

@@ -1,4 +1,15 @@
-import { Platform, PermissionsAndroid } from 'react-native';
+import Contacts, { Contact } from 'react-native-contacts';
+import { Platform, PermissionsAndroid, NativeModules } from 'react-native';
+import { storage } from '../storage';
+
+const CUSTOM_CONTACTS_KEY = '@splitmate_custom_user_contacts';
+
+const withTimeout = <T>(promise: Promise<T>, timeoutMs = 2500, fallback: T): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>(resolve => setTimeout(() => resolve(fallback), timeoutMs)),
+  ]);
+};
 
 export interface PhoneContact {
   id: string;
@@ -6,63 +17,12 @@ export interface PhoneContact {
   phoneNumber?: string;
   email?: string;
   avatarUrl?: string;
+  isRecentlyAdded?: boolean;
 }
-
-// Default device contacts for smooth simulator & phone development
-const DEVICE_SAMPLE_CONTACTS: PhoneContact[] = [
-  {
-    id: 'ct_1',
-    name: 'Aarav Sharma',
-    phoneNumber: '+91 98201 12345',
-    email: 'aarav.sharma@example.com',
-  },
-  {
-    id: 'ct_2',
-    name: 'Priya Patel',
-    phoneNumber: '+91 98111 54321',
-    email: 'priya.patel@example.com',
-  },
-  {
-    id: 'ct_3',
-    name: 'Rohan Mehta',
-    phoneNumber: '+91 97690 98765',
-    email: 'rohan.mehta@example.com',
-  },
-  {
-    id: 'ct_4',
-    name: 'Ananya Deshmukh',
-    phoneNumber: '+91 99887 76655',
-    email: 'ananya.deshmukh@example.com',
-  },
-  {
-    id: 'ct_5',
-    name: 'Vikram Malhotra',
-    phoneNumber: '+91 98334 11223',
-    email: 'vikram.m@example.com',
-  },
-  {
-    id: 'ct_6',
-    name: 'Sneha Kapoor',
-    phoneNumber: '+91 98700 33445',
-    email: 'sneha.kapoor@example.com',
-  },
-  {
-    id: 'ct_7',
-    name: 'David Miller',
-    phoneNumber: '+1 415 555 0192',
-    email: 'david.miller@example.com',
-  },
-  {
-    id: 'ct_8',
-    name: 'Emma Watson',
-    phoneNumber: '+44 20 7946 0912',
-    email: 'emma.watson@example.com',
-  },
-];
 
 export class ContactsService {
   /**
-   * Request native Contacts permission
+   * Request native Contacts permission on Android & iOS
    */
   async requestPermission(): Promise<boolean> {
     if (Platform.OS === 'android') {
@@ -82,20 +42,115 @@ export class ContactsService {
         return false;
       }
     }
-    // On iOS, system automatically presents the permission alert when contacts are accessed
+
+    if (Platform.OS === 'ios') {
+      return await withTimeout(
+        (async () => {
+          try {
+            if (NativeModules.Contacts && typeof Contacts?.checkPermission === 'function') {
+              const status = await Contacts.checkPermission();
+              if (status === 'undefined') {
+                if (typeof Contacts?.requestPermission === 'function') {
+                  const req = await Contacts.requestPermission();
+                  return req === 'authorized' || req === 'limited';
+                }
+              }
+              return status === 'authorized' || status === 'limited';
+            }
+          } catch (e) {
+            console.warn('[ContactsService] iOS permission check error:', e);
+          }
+          return true;
+        })(),
+        2500,
+        true
+      );
+    }
+
     return true;
   }
 
   /**
-   * Fetch contacts from device address book
+   * Fetch real contacts directly from the device address book
    */
   async getContacts(): Promise<PhoneContact[]> {
     const hasPermission = await this.requestPermission();
     if (!hasPermission) {
       return [];
     }
-    // Returns contact list
-    return DEVICE_SAMPLE_CONTACTS;
+
+    let deviceContacts: PhoneContact[] = [];
+    try {
+      if (NativeModules.Contacts && typeof Contacts?.getAll === 'function') {
+        const raw = await withTimeout(Contacts.getAll(), 3000, []);
+        if (raw && Array.isArray(raw)) {
+          deviceContacts = raw
+            .map((c: Contact) => {
+              const nameParts = [c.givenName, c.middleName, c.familyName].filter(Boolean).join(' ').trim();
+              const displayName = nameParts || c.displayName || c.company || 'Unnamed Contact';
+              const phone = c.phoneNumbers?.[0]?.number || '';
+              const email = c.emailAddresses?.[0]?.email || '';
+
+              return {
+                id: c.recordID,
+                name: displayName,
+                phoneNumber: phone,
+                email: email,
+                avatarUrl: c.hasThumbnail ? c.thumbnailPath : undefined,
+              };
+            })
+            .filter(c => c.name.trim().length > 0 || Boolean(c.phoneNumber));
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ [CONTACTS] Failed to fetch device contacts:', err);
+    }
+
+    // Load any user custom numbers added in app and merge with real device contacts
+    try {
+      const customList = (await storage.getItem<PhoneContact[]>(CUSTOM_CONTACTS_KEY)) || [];
+      const seen = new Set<string>();
+      const combined: PhoneContact[] = [];
+
+      for (const c of customList) {
+        const key = (c.phoneNumber || c.name).toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          combined.push(c);
+        }
+      }
+
+      for (const c of deviceContacts) {
+        const key = (c.phoneNumber || c.name).toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          combined.push(c);
+        } else if (!key) {
+          combined.push(c);
+        }
+      }
+
+      return combined;
+    } catch {
+      return deviceContacts;
+    }
+  }
+
+  /**
+   * Add a newly added phone number or contact directly
+   */
+  async addContact(name: string, phoneNumber: string, email?: string): Promise<PhoneContact> {
+    const existing = (await storage.getItem<PhoneContact[]>(CUSTOM_CONTACTS_KEY)) || [];
+    const newContact: PhoneContact = {
+      id: `custom_ct_${Date.now()}`,
+      name: name.trim(),
+      phoneNumber: phoneNumber.trim(),
+      email: email?.trim(),
+      isRecentlyAdded: true,
+    };
+    const updated = [newContact, ...existing.filter(c => c.phoneNumber !== newContact.phoneNumber)];
+    await storage.setItem(CUSTOM_CONTACTS_KEY, updated);
+    return newContact;
   }
 
   /**
@@ -115,4 +170,3 @@ export class ContactsService {
 }
 
 export const contactsService = new ContactsService();
-

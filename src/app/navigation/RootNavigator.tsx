@@ -8,6 +8,8 @@ import { useSecurityStore } from '../../store/useSecurityStore';
 import { BottomTabNavigator } from './BottomTabNavigator';
 import { SplashScreen } from '../../features/auth/screens/SplashScreen';
 import { PinLockScreen } from '../../features/auth/screens/PinLockScreen';
+import { PermissionsScreen } from '../../features/auth/screens/PermissionsScreen';
+import { permissionService } from '../../services/native/permissionService';
 
 // Auth Screens
 import { LoginScreen } from '../../features/auth/screens/LoginScreen';
@@ -44,11 +46,17 @@ export const RootNavigator: React.FC = () => {
   const { loadInitialData } = useAppStore();
   const { isPinEnabled, isLocked, initializeSecurity, lock } = useSecurityStore();
   const [showSplash, setShowSplash] = useState(true);
+  const [hasPermissionsOnboarded, setHasPermissionsOnboarded] = useState<boolean | null>(null);
 
   useEffect(() => {
     initializeAuth();
     initializeSecurity();
     notificationService.requestPermission();
+
+    // Check if user has already completed the first-install permission prompt
+    permissionService.hasCompletedPermissionsOnboarding().then(completed => {
+      setHasPermissionsOnboarded(completed);
+    });
 
     const sub = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'background') {
@@ -66,6 +74,15 @@ export const RootNavigator: React.FC = () => {
 
   if (showSplash) {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
+
+  // First app launch after installation: Prompt user for 4 essential permissions
+  if (hasPermissionsOnboarded === false) {
+    return (
+      <PermissionsScreen
+        onComplete={() => setHasPermissionsOnboarded(true)}
+      />
+    );
   }
 
   // If user is authenticated and mPIN is enabled, block with PIN screen
@@ -119,11 +136,18 @@ export const RootNavigator: React.FC = () => {
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen name="Search" component={SearchScreen} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-          <Stack.Screen
-            name="Subscription"
+          <Stack.Screen name="Subscription"
             component={SubscriptionScreen}
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
+          <Stack.Screen name="Permissions">
+            {({ route, navigation }: any) => (
+              <PermissionsScreen
+                isSettingsMode={route.params?.isSettingsMode}
+                onComplete={() => navigation.goBack()}
+              />
+            )}
+          </Stack.Screen>
         </Stack.Group>
       )}
     </Stack.Navigator>

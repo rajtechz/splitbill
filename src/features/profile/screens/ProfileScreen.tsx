@@ -437,6 +437,28 @@ export const ProfileScreen: React.FC = () => {
               </Text>
             </View>
           </TouchableOpacity>
+
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+
+          {/* App Permissions (Location, Camera, Contacts, Notifications) */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Permissions', { isSettingsMode: true })}
+            style={styles.settingRow}
+          >
+            <View style={[styles.settingIcon, { backgroundColor: '#EDE9FE' }]}>
+              <Icon name="shield" size={18} color="#7C3AED" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
+                Device Permissions
+              </Text>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                Location, Camera, Contacts, Notifications
+              </Text>
+            </View>
+            <Icon name="chevron-right" size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
 
         {/* Logout Button */}

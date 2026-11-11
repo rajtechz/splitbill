@@ -1,54 +1,20 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.store = void 0;
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const seedData_js_1 = require("./seedData.js");
 const index_js_1 = require("../models/index.js");
 const mongo_js_1 = require("../database/mongo.js");
-const DATA_DIR = path_1.default.resolve(process.cwd(), 'data');
-const DB_FILE = path_1.default.join(DATA_DIR, 'db.json');
 class Store {
-    data;
-    saveTimeout = null;
+    data = {
+        users: [],
+        friends: [],
+        groups: [],
+        expenses: [],
+        settlements: [],
+        activities: [],
+        notifications: [],
+    };
     constructor() {
-        this.data = this.loadDatabase();
-    }
-    loadDatabase() {
-        try {
-            if (fs_1.default.existsSync(DB_FILE)) {
-                const raw = fs_1.default.readFileSync(DB_FILE, 'utf-8');
-                const parsed = JSON.parse(raw);
-                console.log('[SplitMate DB] Loaded existing database from', DB_FILE);
-                return {
-                    users: parsed.users || seedData_js_1.SEED_USERS,
-                    friends: parsed.friends || seedData_js_1.SEED_FRIENDS,
-                    groups: parsed.groups || seedData_js_1.SEED_GROUPS,
-                    expenses: parsed.expenses || seedData_js_1.SEED_EXPENSES,
-                    settlements: parsed.settlements || seedData_js_1.SEED_SETTLEMENTS,
-                    activities: parsed.activities || seedData_js_1.SEED_ACTIVITIES,
-                    notifications: parsed.notifications || seedData_js_1.SEED_NOTIFICATIONS,
-                };
-            }
-        }
-        catch (err) {
-            console.warn('[SplitMate DB] Failed to read db.json, initializing from seeds:', err);
-        }
-        console.log('[SplitMate DB] Initializing fresh database with seed data');
-        const freshDb = {
-            users: [...seedData_js_1.SEED_USERS],
-            friends: [...seedData_js_1.SEED_FRIENDS],
-            groups: [...seedData_js_1.SEED_GROUPS],
-            expenses: [...seedData_js_1.SEED_EXPENSES],
-            settlements: [...seedData_js_1.SEED_SETTLEMENTS],
-            activities: [...seedData_js_1.SEED_ACTIVITIES],
-            notifications: [...seedData_js_1.SEED_NOTIFICATIONS],
-        };
-        this.scheduleSave(freshDb);
-        return freshDb;
+        // In-memory cache mirrors MongoDB directly; zero static db.json file storage
     }
     async reloadFromMongo() {
         if (!(0, mongo_js_1.isMongoConnected)())
@@ -63,45 +29,21 @@ class Store {
                 index_js_1.ActivityModel.find().lean(),
                 index_js_1.NotificationModel.find().lean(),
             ]);
-            if (users.length > 0)
-                this.data.users = users;
-            if (groups.length > 0)
-                this.data.groups = groups;
-            if (friends.length > 0)
-                this.data.friends = friends;
-            if (expenses.length > 0)
-                this.data.expenses = expenses;
-            if (settlements.length > 0)
-                this.data.settlements = settlements;
-            if (activities.length > 0)
-                this.data.activities = activities;
-            if (notifications.length > 0)
-                this.data.notifications = notifications;
-            this.scheduleSave();
-            console.log('🔄 [SplitMate DB] Synchronized in-memory store with MongoDB collections');
+            this.data.users = (users || []);
+            this.data.groups = (groups || []);
+            this.data.friends = (friends || []);
+            this.data.expenses = (expenses || []);
+            this.data.settlements = (settlements || []);
+            this.data.activities = (activities || []);
+            this.data.notifications = (notifications || []);
+            console.log('🔄 [SplitMate DB] Store populated directly from MongoDB collections (Zero JSON file dependencies)');
         }
         catch (err) {
             console.warn('⚠️ [SplitMate DB] Could not sync from MongoDB:', err.message);
         }
     }
-    scheduleSave(dataToSave) {
-        if (this.saveTimeout) {
-            clearTimeout(this.saveTimeout);
-        }
-        this.saveTimeout = setTimeout(() => {
-            try {
-                if (!fs_1.default.existsSync(DATA_DIR)) {
-                    fs_1.default.mkdirSync(DATA_DIR, { recursive: true });
-                }
-                fs_1.default.writeFileSync(DB_FILE, JSON.stringify(dataToSave || this.data, null, 2), 'utf-8');
-            }
-            catch (err) {
-                console.error('[SplitMate DB] Failed to persist db.json:', err);
-            }
-        }, 200);
-    }
     persist() {
-        this.scheduleSave();
+        // No-op: Data is directly written to MongoDB via Mongoose models
     }
     // --- Users ---
     findUserById(id) {

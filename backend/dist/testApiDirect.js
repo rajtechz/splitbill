@@ -16,6 +16,30 @@ async function runDirectTests() {
         const verifyDynamic = await otp_provider_js_1.otpProvider.verifyOtp({ phone: '+91 98765 43210' }, otpRes.devOtp);
         console.log('✓ Dynamic Generated Code Verification:', verifyDynamic);
     }
+    // Ensure isolated test user exists for direct test assertions
+    if (!store_js_1.store.findUserById('usr_me')) {
+        store_js_1.store.createUser({
+            id: 'usr_me',
+            name: 'Alex Johnson',
+            email: 'alex.johnson@example.com',
+            passwordHash: '$2a$08$VmHubN/ZVw7Jr8wx/jKfZeWA8kuS6wRzB8S6TkYnlULwrqmmKj9p6',
+            phoneNumber: '+91 98765 43210',
+            defaultCurrency: 'INR',
+            country: 'IN',
+            createdAt: new Date().toISOString(),
+        });
+    }
+    if (!store_js_1.store.findUserByEmail('priya.s@example.com')) {
+        store_js_1.store.createUser({
+            id: 'usr_priya',
+            name: 'Priya Sharma',
+            email: 'priya.s@example.com',
+            phoneNumber: '9811122334',
+            defaultCurrency: 'INR',
+            country: 'IN',
+            createdAt: new Date().toISOString(),
+        });
+    }
     // 2. Test Notification Provider
     console.log('\n[2] Testing Flexible Notification Provider:');
     const notifRes = await notification_provider_js_1.notificationProvider.sendPush({

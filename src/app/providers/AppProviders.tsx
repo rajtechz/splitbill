@@ -32,9 +32,9 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
         if (savedUrl) {
           updateConfig({ apiBaseUrl: savedUrl });
         }
-        if (savedUseMock !== null) {
-          updateConfig({ useMockApi: savedUseMock });
-        }
+        // Always use live REST backend API & MongoDB (do not use mock data)
+        updateConfig({ useMockApi: false });
+        await storage.setUseMockApi(false);
       } catch (e) {
         console.warn('Failed to load persisted backend config', e);
       }

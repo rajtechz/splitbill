@@ -30,7 +30,7 @@ export const config: AppConfig = {
   apiBaseUrl: getDefaultApiBaseUrl(),
   apiTimeoutMs: 5000,
   environment: __DEV__ ? 'development' : 'production',
-  useMockApi: true, // Default to true so app works smoothly offline; toggle to false when your backend is running
+  useMockApi: false, // Always use live backend connected to MongoDB
 };
 
 type ConfigListener = (newConfig: AppConfig) => void;

@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { storage } from '../storage';
 
-const BIOMETRICS_PREF_KEY = '@splitmate_biometrics_enabled';
+const BIOMETRICS_PREF_KEY = '@splitmate_biometrics_enabled_v1';
 
 export type BiometryType = 'Fingerprint' | 'FaceID' | 'TouchID' | 'Biometrics';
 

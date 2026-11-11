@@ -47,8 +47,8 @@ const UserSchema = new mongoose_1.Schema({
     defaultCurrency: { type: String, default: 'INR' },
     country: { type: String, default: 'IN' },
     mPin: { type: String, default: '1234' },
-    isPinEnabled: { type: Boolean, default: true },
-    isBiometricsEnabled: { type: Boolean, default: true },
+    isPinEnabled: { type: Boolean, default: false },
+    isBiometricsEnabled: { type: Boolean, default: false },
     createdAt: { type: String, required: true },
     updatedAt: { type: String },
 }, { timestamps: false, versionKey: false });

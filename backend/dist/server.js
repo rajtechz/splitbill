@@ -21,7 +21,7 @@ const startServer = async () => {
         console.log(`❤️  Health Check:           http://localhost:${index_js_1.config.port}/health`);
         console.log(`🌐 Base API Endpoint:      http://localhost:${index_js_1.config.port}/api/v1`);
         console.log(`🍃 MongoDB Compass URI:    ${index_js_1.config.mongoUri}`);
-        console.log(`💾 Storage Mode:           ${(0, mongo_js_1.isMongoConnected)() ? 'MongoDB (Active) + Local Sync' : 'Local db.json (MongoDB reconnecting)'}`);
+        console.log(`💾 Storage Mode:           MongoDB (Direct Database Engine - Zero Local JSON Files)`);
         console.log('======================================================\n');
     });
     // Handle graceful shutdown

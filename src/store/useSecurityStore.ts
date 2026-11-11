@@ -3,9 +3,9 @@ import { storage } from '../services/storage';
 import { biometricsService } from '../services/native/biometricsService';
 import { repository } from '../services/api/repository';
 
-const PIN_ENABLED_KEY = '@splitmate_pin_enabled';
-const PIN_HASH_KEY = '@splitmate_pin_code';
-const BIOMETRICS_ENABLED_KEY = '@splitmate_biometrics_enabled';
+const PIN_ENABLED_KEY = '@splitmate_app_lock_enabled_v1';
+const PIN_HASH_KEY = '@splitmate_pin_code_v1';
+const BIOMETRICS_ENABLED_KEY = '@splitmate_biometrics_enabled_v1';
 
 interface SecurityState {
   isPinEnabled: boolean;
@@ -36,6 +36,15 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
 
   initializeSecurity: async () => {
     try {
+      // 1. Purge legacy forced default keys so app doesn't lock on reload
+      const legacyPinEnabled = await storage.getItem<string>('@splitmate_pin_enabled');
+      if (legacyPinEnabled !== null) {
+        await storage.removeItem('@splitmate_pin_enabled');
+        await storage.removeItem('@splitmate_pin_code');
+        await storage.removeItem('@splitmate_biometrics_enabled');
+        await storage.setItem(PIN_ENABLED_KEY, 'false');
+      }
+
       const [savedEnabled, savedPin, savedBiometrics] = await Promise.all([
         storage.getItem<string>(PIN_ENABLED_KEY),
         storage.getItem<string>(PIN_HASH_KEY),
@@ -43,12 +52,13 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
       ]);
 
       const hasPin = Boolean(savedPin);
+      // App Lock is strictly opt-in (Option A)
       const isEnabled = savedEnabled === 'true' && hasPin;
       const isBio = savedBiometrics === 'true';
 
       set({
         isPinEnabled: isEnabled,
-        isLocked: isEnabled,
+        isLocked: false, // Do NOT lock on initial load/reload; lock only when backgrounded
         hasPinSet: hasPin,
         isBiometricsEnabled: isBio,
         currentPin: savedPin || null,
@@ -123,6 +133,14 @@ export const useSecurityStore = create<SecurityState>((set, get) => ({
   disablePin: async () => {
     await storage.setItem(PIN_ENABLED_KEY, 'false');
     await storage.setItem(BIOMETRICS_ENABLED_KEY, 'false');
-    set({ isPinEnabled: false, isLocked: false, isBiometricsEnabled: false });
+    await storage.removeItem(PIN_HASH_KEY);
+    await storage.removeItem('@splitmate_pin_enabled');
+    set({
+      isPinEnabled: false,
+      isLocked: false,
+      hasPinSet: false,
+      isBiometricsEnabled: false,
+      currentPin: null,
+    });
   },
 }));
