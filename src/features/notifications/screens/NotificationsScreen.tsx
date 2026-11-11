@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../app/navigation/types';
 import { useTheme } from '../../../theme';
 import { useAppStore } from '../../../store/useAppStore';
+import { useAuthStore } from '../../../store/useAuthStore';
 import { AppHeader } from '../../../components/common/AppHeader';
 import { Icon, IconName } from '../../../components/common/Icon';
 import { EmptyState } from '../../../components/common/EmptyState';
@@ -21,16 +22,58 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export const NotificationsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { colors, typography, spacing, borderRadius } = useTheme();
-  const { notifications, markNotificationRead } = useAppStore();
+  const { notifications, markNotificationRead, markAllNotificationsRead } = useAppStore();
+  const currentUser = useAuthStore(state => state.currentUser);
+
+  const currentUserName = (currentUser?.name || '').toLowerCase().trim();
+  const currentUserId = currentUser?.id || '';
+
+  // Filter only notifications intended for the current user
+  const userNotifications = useMemo(() => {
+    const seen = new Set<string>();
+
+    return notifications.filter(item => {
+      // 1. If recipientId is specified, it MUST match the current user
+      if (item.recipientId && currentUserId && item.recipientId !== currentUserId) {
+        return false;
+      }
+
+      const text = ((item.message || item.body || '') + ' ' + (item.title || '')).toLowerCase();
+
+      // 2. Never show self-targeted notifications: "KD paid you..." to KD
+      if (currentUserName && text.includes(`${currentUserName} paid you`)) {
+        return false;
+      }
+
+      // 3. Never show "KD added [Expense]. Your share is..." to KD
+      if (currentUserName && text.includes(`${currentUserName} added`) && text.includes('your share is')) {
+        return false;
+      }
+
+      // 4. Deduplicate identical messages sent within the same minute
+      const dedupeKey = `${item.title}_${item.message || item.body}_${item.timestamp.slice(0, 16)}`;
+      if (seen.has(dedupeKey)) {
+        return false;
+      }
+      seen.add(dedupeKey);
+
+      return true;
+    });
+  }, [notifications, currentUserName, currentUserId]);
 
   const getNotifIcon = (type: string): { icon: IconName; color: string; bg: string } => {
     switch (type) {
       case 'expense':
+      case 'expense_added':
+      case 'expense_updated':
         return { icon: 'receipt', color: colors.primary, bg: colors.primaryLight };
       case 'settlement':
+      case 'payment_received':
         return { icon: 'check', color: colors.success, bg: colors.successLight };
       case 'invite':
-        return { icon: 'groups', color: colors.info, bg: colors.infoLight };
+      case 'group_invite':
+      case 'friend_invite':
+        return { icon: 'groups', color: colors.primary, bg: colors.primaryLight };
       default:
         return { icon: 'bell', color: colors.warning, bg: colors.warningLight };
     }
@@ -38,11 +81,23 @@ export const NotificationsScreen: React.FC = () => {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
-      <AppHeader title="Notifications" showBack onBack={() => navigation.goBack()} />
+      <AppHeader
+        title="Notifications"
+        showBack
+        onBack={() => navigation.goBack()}
+        rightAction={
+          userNotifications.some(n => !n.read)
+            ? {
+                icon: 'check',
+                onPress: markAllNotificationsRead,
+              }
+            : undefined
+        }
+      />
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 60 }]}>
-        {notifications.length > 0 ? (
-          notifications.map(item => {
+        {userNotifications.length > 0 ? (
+          userNotifications.map(item => {
             const iconConfig = getNotifIcon(item.type);
             let timeStr = '';
             try {
@@ -74,7 +129,7 @@ export const NotificationsScreen: React.FC = () => {
                     {item.title}
                   </Text>
                   <Text style={[typography.bodyMedium, { color: colors.textSecondary, marginTop: 2 }]}>
-                    {item.message}
+                    {item.message || item.body}
                   </Text>
                   <Text style={[typography.caption, { color: colors.textMuted, marginTop: 4 }]}>
                     {timeStr}
@@ -88,7 +143,7 @@ export const NotificationsScreen: React.FC = () => {
         ) : (
           <EmptyState
             title="All caught up!"
-            description="You will see notifications here when friends add expenses or settle debts."
+            description="You will see notifications here when friends add expenses or settle debts with you."
             iconName="bell"
           />
         )}

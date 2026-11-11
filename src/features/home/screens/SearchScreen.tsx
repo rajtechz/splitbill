@@ -12,6 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../app/navigation/types';
 import { useTheme } from '../../../theme';
 import { useAppStore } from '../../../store/useAppStore';
+import { useAuthStore } from '../../../store/useAuthStore';
 import { AppHeader } from '../../../components/common/AppHeader';
 import { GroupCard } from '../../../components/cards/GroupCard';
 import { FriendCard } from '../../../components/cards/FriendCard';
@@ -25,6 +26,7 @@ export const SearchScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { colors, typography, spacing, borderRadius } = useTheme();
   const { groups, friends, expenses } = useAppStore();
+  const currentUser = useAuthStore(state => state.currentUser);
 
   const [query, setQuery] = useState('');
 
@@ -133,6 +135,8 @@ export const SearchScreen: React.FC = () => {
                   <ExpenseCard
                     key={e.id}
                     expense={e}
+                    currentUserId={currentUser?.id}
+                    currentUserName={currentUser?.name}
                     onPress={() => navigation.navigate('ExpenseDetails', { expenseId: e.id })}
                   />
                 ))}

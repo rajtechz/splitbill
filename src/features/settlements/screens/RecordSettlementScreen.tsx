@@ -62,21 +62,64 @@ export const RecordSettlementScreen: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Available people (Current user + all friends)
-  const allPeople = [
-    {
-      userId: currentUser?.id || 'usr_me',
-      name: currentUser?.name || 'You',
-      avatarUrl: currentUser?.avatarUrl,
-      upiId: currentUser?.upiId || 'alex.johnson@okaxis',
-    },
-    ...friends.map(f => ({
-      userId: f.userId,
-      name: f.name,
-      avatarUrl: f.avatarUrl,
-      upiId: f.upiId || `${f.name.toLowerCase().replace(/\s+/g, '')}@okaxis`,
-    })),
-  ];
+  // Available people (Current user + friends + group members + expense participants)
+  const allPeopleMap: Record<string, { userId: string; name: string; avatarUrl?: string; upiId: string }> = {};
+
+  const myId = currentUser?.id || 'usr_me';
+  allPeopleMap[myId] = {
+    userId: myId,
+    name: currentUser?.name || 'You',
+    avatarUrl: currentUser?.avatarUrl,
+    upiId: currentUser?.upiId || 'alex.johnson@okaxis',
+  };
+
+  for (const f of friends) {
+    if (!allPeopleMap[f.userId]) {
+      allPeopleMap[f.userId] = {
+        userId: f.userId,
+        name: f.name,
+        avatarUrl: f.avatarUrl,
+        upiId: f.upiId || `${f.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@okaxis`,
+      };
+    }
+  }
+
+  for (const g of groups) {
+    for (const m of g.members) {
+      if (!allPeopleMap[m.userId]) {
+        allPeopleMap[m.userId] = {
+          userId: m.userId,
+          name: m.name,
+          avatarUrl: m.avatarUrl,
+          upiId: `${m.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@okaxis`,
+        };
+      }
+    }
+  }
+
+  const { expenses } = useAppStore.getState();
+  for (const exp of expenses) {
+    for (const p of exp.participants) {
+      if (!allPeopleMap[p.userId]) {
+        allPeopleMap[p.userId] = {
+          userId: p.userId,
+          name: p.name,
+          avatarUrl: p.avatarUrl,
+          upiId: `${p.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@okaxis`,
+        };
+      }
+    }
+  }
+
+  if (preselectedReceiverId && !allPeopleMap[preselectedReceiverId]) {
+    allPeopleMap[preselectedReceiverId] = {
+      userId: preselectedReceiverId,
+      name: 'Receiver',
+      upiId: 'payee@okaxis',
+    };
+  }
+
+  const allPeople = Object.values(allPeopleMap);
 
   const payerObj = allPeople.find(p => p.userId === payerId);
   const receiverObj = allPeople.find(p => p.userId === receiverId);

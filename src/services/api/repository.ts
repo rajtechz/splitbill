@@ -20,6 +20,7 @@ import {
 } from './mockData';
 import { storage } from '../storage';
 import { calculateBalances, calculateUserBalance } from '../..//features/balances/calculations/debtEngine';
+import { isUserMatch } from '../../utils/userMatch';
 import { config } from '../../app/config';
 import { HttpRepository } from './httpRepository';
 
@@ -329,6 +330,17 @@ class LocalPersistentRepository implements ISplitMateRepository {
     await this.ensureInitialized();
     const idx = this.expenses.findIndex(e => e.id === id);
     if (idx === -1) throw new Error('Expense not found');
+
+    const existing = this.expenses[idx];
+    const isOwner =
+      existing.createdBy === this.user.id ||
+      isUserMatch({ userId: existing.createdBy, name: existing.createdBy }, this.user) ||
+      existing.participants.some(p => p.paidAmount > 0 && isUserMatch(p, this.user));
+
+    if (!isOwner) {
+      throw new Error('Access Denied: Only the member who created or paid for this expense can edit it.');
+    }
+
     this.expenses[idx] = {
       ...this.expenses[idx],
       ...data,
@@ -355,17 +367,27 @@ class LocalPersistentRepository implements ISplitMateRepository {
   async deleteExpense(id: string): Promise<boolean> {
     await this.ensureInitialized();
     const target = this.expenses.find(e => e.id === id);
-    if (target) {
-      this.activities.unshift({
-        id: `act_${Date.now()}`,
-        type: 'expense_deleted',
-        actorId: this.user.id,
-        actorName: this.user.name,
-        title: `Deleted "${target.title}"`,
-        description: `Expense was deleted`,
-        timestamp: new Date().toISOString(),
-      });
+    if (!target) throw new Error('Expense not found');
+
+    const isOwner =
+      target.createdBy === this.user.id ||
+      isUserMatch({ userId: target.createdBy, name: target.createdBy }, this.user) ||
+      target.participants.some(p => p.paidAmount > 0 && isUserMatch(p, this.user));
+
+    if (!isOwner) {
+      throw new Error('Access Denied: Only the member who created or paid for this expense can delete it.');
     }
+
+    this.activities.unshift({
+      id: `act_${Date.now()}`,
+      type: 'expense_deleted',
+      actorId: this.user.id,
+      actorName: this.user.name,
+      title: `Deleted "${target.title}"`,
+      description: `Expense was deleted`,
+      timestamp: new Date().toISOString(),
+    });
+
     this.expenses = this.expenses.filter(e => e.id !== id);
     this.recalculateAllBalances();
     await this.persistState();

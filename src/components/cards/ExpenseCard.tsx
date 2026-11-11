@@ -3,12 +3,14 @@ import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-nativ
 import { useTheme } from '../../theme';
 import { Expense, ExpenseCategory } from '../../types';
 import { formatMoney } from '../../utils/money';
+import { isUserMatch } from '../../utils/userMatch';
 import { Icon, IconName } from '../common/Icon';
 import { format } from 'date-fns';
 
 interface ExpenseCardProps {
   expense: Expense;
   currentUserId?: string;
+  currentUserName?: string;
   onPress: () => void;
   style?: ViewStyle;
 }
@@ -16,6 +18,7 @@ interface ExpenseCardProps {
 export const ExpenseCard: React.FC<ExpenseCardProps> = ({
   expense,
   currentUserId = 'usr_me',
+  currentUserName,
   onPress,
   style,
 }) => {
@@ -44,17 +47,18 @@ export const ExpenseCard: React.FC<ExpenseCardProps> = ({
     }
   };
 
-  const userParticipant = expense.participants.find(p => p.userId === currentUserId);
+  const matchTarget = { id: currentUserId, userId: currentUserId, name: currentUserName };
+  const userParticipant = expense.participants.find(p => isUserMatch(p, matchTarget));
   const paidByUser = userParticipant?.paidAmount || 0;
   const userShare = userParticipant?.shareAmount || 0;
   const userNet = paidByUser - userShare;
 
   const isPositive = userNet > 0;
-  const isZero = Math.abs(userNet) < 0.01;
+  const isZero = !userParticipant || Math.abs(userNet) < 0.01;
 
   // Primary payer name
   const topPayer = [...expense.participants].sort((a, b) => b.paidAmount - a.paidAmount)[0];
-  const payerText = topPayer?.userId === currentUserId ? 'You paid' : `${topPayer?.name || 'Someone'} paid`;
+  const payerText = isUserMatch(topPayer, matchTarget) ? 'You paid' : `${topPayer?.name || 'Someone'} paid`;
 
   let formattedDate = '';
   try {

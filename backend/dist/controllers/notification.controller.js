@@ -4,8 +4,9 @@ exports.sendTestNotification = exports.markAllAsRead = exports.markAsRead = expo
 const store_js_1 = require("../data/store.js");
 const response_js_1 = require("../utils/response.js");
 const index_js_1 = require("../services/providers/index.js");
-const getNotifications = async (_req, res) => {
-    const notifications = store_js_1.store.getNotifications();
+const getNotifications = async (req, res) => {
+    const currentUserId = req.user?.id || 'usr_me';
+    const notifications = store_js_1.store.getNotifications(currentUserId);
     return (0, response_js_1.sendSuccess)(res, notifications);
 };
 exports.getNotifications = getNotifications;

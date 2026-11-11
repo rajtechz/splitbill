@@ -20,7 +20,8 @@ import { Icon } from '../../../components/common/Icon';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { formatMoney } from '../../../utils/money';
 import { ConfirmationModal } from '../../../components/modals/ConfirmationModal';
-import { calculateBalances, simplifyDebts } from '../../balances/calculations/debtEngine';
+import { calculateBalances, simplifyDebts, calculateUserBalance } from '../../balances/calculations/debtEngine';
+import { isUserMatch } from '../../../utils/userMatch';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type GroupDetailsRouteProp = RouteProp<RootStackParamList, 'GroupDetails'>;
@@ -50,8 +51,10 @@ export const GroupDetailsScreen: React.FC = () => {
   const groupExpenses = expenses.filter(e => e.groupId === groupId);
   const groupSettlements = settlements.filter(s => s.groupId === groupId);
 
-  const memberBalances = calculateBalances(groupExpenses, groupSettlements, group.currency);
-  const simplifiedDebts = simplifyDebts(groupExpenses, groupSettlements, group.currency);
+  const memberBalances = calculateBalances(groupExpenses, groupSettlements, group.currency, currentUser);
+  const simplifiedDebts = simplifyDebts(groupExpenses, groupSettlements, group.currency, currentUser);
+  const userSummary = calculateUserBalance(currentUser?.id || 'usr_me', groupExpenses, groupSettlements, group.currency, currentUser);
+  const currentGroupBalance = userSummary.totalBalance;
 
   const handleDeleteGroup = async () => {
     setShowDeleteModal(false);
@@ -59,8 +62,8 @@ export const GroupDetailsScreen: React.FC = () => {
     navigation.goBack();
   };
 
-  const isNetPositive = group.userBalance > 0;
-  const isNetZero = Math.abs(group.userBalance) < 0.01;
+  const isNetPositive = currentGroupBalance > 0;
+  const isNetZero = Math.abs(currentGroupBalance) < 0.01;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -121,7 +124,7 @@ export const GroupDetailsScreen: React.FC = () => {
                 {isNetZero
                   ? 'All settled up'
                   : `${isNetPositive ? '+' : '-'}${formatMoney(
-                      Math.abs(group.userBalance),
+                      Math.abs(currentGroupBalance),
                       group.currency
                     )}`}
               </Text>
@@ -214,6 +217,8 @@ export const GroupDetailsScreen: React.FC = () => {
                   <ExpenseCard
                     key={exp.id}
                     expense={exp}
+                    currentUserId={currentUser?.id}
+                    currentUserName={currentUser?.name}
                     onPress={() => navigation.navigate('ExpenseDetails', { expenseId: exp.id })}
                   />
                 ))
@@ -257,7 +262,7 @@ export const GroupDetailsScreen: React.FC = () => {
                     <Avatar name={member.name} size={36} />
                     <View style={{ flex: 1, marginLeft: 12 }}>
                       <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                        {member.userId === currentUser?.id ? 'You' : member.name}
+                        {isUserMatch(member, currentUser) ? `${member.name} (You)` : member.name}
                       </Text>
                       <Text style={[typography.caption, { color: colors.textSecondary }]}>
                         {isZero ? 'Settled' : isPositive ? 'Gets back' : 'Owes in group'}
@@ -356,7 +361,7 @@ export const GroupDetailsScreen: React.FC = () => {
                   <Avatar name={m.name} size={40} />
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                      {m.userId === currentUser?.id ? `${m.name} (You)` : m.name}
+                      {isUserMatch(m, currentUser) ? `${m.name} (You)` : m.name}
                     </Text>
                     <Text style={[typography.caption, { color: colors.textSecondary }]}>
                       {m.email}

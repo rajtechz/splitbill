@@ -3,8 +3,10 @@ import {
   calculateUserBalance,
   simplifyDebts,
   calculateSettlement,
+  getPeopleDebts,
 } from '../../src/features/balances/calculations/debtEngine';
-import { Expense, Settlement } from '../../src/types';
+import { Expense, Settlement, Group, Friend } from '../../src/types';
+import { formatMoney } from '../../src/utils/money';
 
 describe('Debt and Balance Calculation Engine', () => {
   it('correctly calculates balances when Person A pays full amount for B and C', () => {
@@ -191,6 +193,136 @@ describe('Debt and Balance Calculation Engine', () => {
     expect(bobSummary.totalBalance).toBe(-400);
     expect(bobSummary.youOwe).toBe(400);
     expect(bobSummary.youAreOwed).toBe(0);
+  });
+
+  it('correctly maps user by case-insensitive name / contact alias (e.g. KD vs Kd)', () => {
+    // 5000 expense paid by Raja, split between Raja, Priya, Kd, Rohan
+    const expense: Expense = {
+      id: 'exp_manali_1',
+      title: 'Room rent',
+      totalAmount: 5000,
+      currency: 'INR',
+      date: '2026-11-11',
+      category: 'Rent',
+      splitMethod: 'equally',
+      createdBy: 'usr_raja',
+      createdAt: '2026-11-11T10:00:00Z',
+      participants: [
+        { userId: 'usr_raja', name: 'Raja', paidAmount: 5000, shareAmount: 1250, netBalance: 3750 },
+        { userId: 'usr_priya', name: 'Priya Patel', paidAmount: 0, shareAmount: 1250, netBalance: -1250 },
+        { userId: 'contact_kd_alias', name: 'Kd', paidAmount: 0, shareAmount: 1250, netBalance: -1250 },
+        { userId: 'usr_rohan', name: 'Rohan Mehta', paidAmount: 0, shareAmount: 1250, netBalance: -1250 },
+      ],
+    };
+
+    const currentLoggedInUser = {
+      id: 'usr_kd_actual_id',
+      name: 'KD',
+      email: 'kd@gmail.com',
+    };
+
+    // Before, without currentUser matching, KD would get 0 because userId was contact_kd_alias
+    const kdSummary = calculateUserBalance(
+      currentLoggedInUser.id,
+      [expense],
+      [],
+      'INR',
+      currentLoggedInUser
+    );
+
+    expect(kdSummary.totalBalance).toBe(-1250);
+    expect(kdSummary.youOwe).toBe(1250);
+    expect(kdSummary.youAreOwed).toBe(0);
+  });
+
+  it('correctly calculates peopleYouOwe with Raja when multiple shared expenses occur', () => {
+    // Expense 1: Raja paid 5000 for Raja, Priya, Kd, Rohan (Kd share 1250)
+    const exp1: Expense = {
+      id: 'e1',
+      title: 'Room rent',
+      groupId: 'grp_manali',
+      groupName: 'Manali',
+      totalAmount: 5000,
+      currency: 'INR',
+      date: '2026-11-11',
+      category: 'Rent',
+      splitMethod: 'equally',
+      createdBy: 'usr_raja',
+      createdAt: '2026-11-11T10:00:00Z',
+      participants: [
+        { userId: 'usr_raja', name: 'Raja', paidAmount: 5000, shareAmount: 1250, netBalance: 3750 },
+        { userId: 'usr_priya', name: 'Priya Patel', paidAmount: 0, shareAmount: 1250, netBalance: -1250 },
+        { userId: 'contact_kd_alias', name: 'Kd', paidAmount: 0, shareAmount: 1250, netBalance: -1250 },
+        { userId: 'usr_rohan', name: 'Rohan Mehta', paidAmount: 0, shareAmount: 1250, netBalance: -1250 },
+      ],
+    };
+
+    // Expense 2: KD paid 300 for KD and Raja (Raja share 150)
+    // So KD owes Raja 1250 - 150 = 1100 net!
+    const exp2: Expense = {
+      id: 'e2',
+      title: 'Snacks',
+      groupId: 'grp_manali',
+      groupName: 'Manali',
+      totalAmount: 300,
+      currency: 'INR',
+      date: '2026-11-11',
+      category: 'Food',
+      splitMethod: 'equally',
+      createdBy: 'usr_kd_actual_id',
+      createdAt: '2026-11-11T12:00:00Z',
+      participants: [
+        { userId: 'usr_kd_actual_id', name: 'KD', paidAmount: 300, shareAmount: 150, netBalance: 150 },
+        { userId: 'usr_raja', name: 'Raja', paidAmount: 0, shareAmount: 150, netBalance: -150 },
+      ],
+    };
+
+    const currentLoggedInUser = {
+      id: 'usr_kd_actual_id',
+      name: 'KD',
+      email: 'kd@gmail.com',
+    };
+
+    const groups: Group[] = [
+      {
+        id: 'grp_manali',
+        name: 'Manali',
+        category: 'Trip',
+        currency: 'INR',
+        createdBy: 'usr_raja',
+        createdAt: '2026-11-10T10:00:00Z',
+        totalSpending: 5300,
+        userBalance: -1100,
+        members: [
+          { userId: 'usr_raja', name: 'Raja', email: 'raja@example.com', role: 'admin', joinedAt: '2026-11-10T10:00:00Z' },
+          { userId: 'usr_kd_actual_id', name: 'KD', email: 'kd@gmail.com', role: 'member', joinedAt: '2026-11-10T10:00:00Z' },
+        ],
+      },
+    ];
+
+    const { peopleYouOwe, peopleWhoOweYou } = getPeopleDebts(
+      [exp1, exp2],
+      [],
+      [],
+      groups,
+      'INR',
+      currentLoggedInUser
+    );
+
+    expect(peopleYouOwe.length).toBe(1);
+    expect(peopleYouOwe[0].name).toBe('Raja');
+    expect(peopleYouOwe[0].amount).toBe(1100);
+    expect(peopleYouOwe[0].groupName).toBe('Manali');
+    expect(peopleYouOwe[0].upiId).toBe('raja@okaxis');
+    expect(peopleWhoOweYou.length).toBe(0);
+  });
+
+  it('correctly formats money with formatMoney without double minus signs', () => {
+    expect(formatMoney(-1100, 'INR')).toBe('-₹1,100.00');
+    expect(formatMoney(-1100, 'INR', { showSign: true })).toBe('-₹1,100.00');
+    expect(formatMoney(1100, 'INR', { showSign: true })).toBe('+₹1,100.00');
+    expect(formatMoney(1100, 'INR')).toBe('₹1,100.00');
+    expect(formatMoney(-1100, 'INR', { absolute: true })).toBe('₹1,100.00');
   });
 });
 

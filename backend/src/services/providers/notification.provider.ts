@@ -32,6 +32,7 @@ export class MockNotificationProvider implements INotificationProvider {
     const notif: AppNotification = {
       id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       type: payload.type,
+      recipientId: payload.userId,
       title: payload.title,
       body: payload.body,
       message: payload.body,

@@ -254,6 +254,8 @@ export const FriendDetailsScreen: React.FC = () => {
                 <ExpenseCard
                   key={exp.id}
                   expense={exp}
+                  currentUserId={currentUser?.id}
+                  currentUserName={currentUser?.name}
                   onPress={() => navigation.navigate('ExpenseDetails', { expenseId: exp.id })}
                 />
               ))

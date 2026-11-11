@@ -231,6 +231,22 @@ export const AddExpenseScreen: React.FC = () => {
     currency,
   ]);
 
+  const totalPercentage = useMemo(() => {
+    return includedParticipantIds.reduce(
+      (sum, id) => sum + (parseFloat(percentages[id]) || 0),
+      0
+    );
+  }, [includedParticipantIds, percentages]);
+
+  const totalShares = useMemo(() => {
+    return includedParticipantIds.reduce(
+      (sum, id) => sum + (parseFloat(sharesWeights[id]) || 1),
+      0
+    );
+  }, [includedParticipantIds, sharesWeights]);
+
+  const perShareAmount = totalShares > 0 ? parsedAmount / totalShares : 0;
+
   const handleSave = async () => {
     if (!title.trim()) {
       setErrorMsg('Please enter an expense title');
@@ -295,6 +311,9 @@ export const AddExpenseScreen: React.FC = () => {
           paidAmount,
           shareAmount,
           netBalance: paidAmount - shareAmount,
+          shares: splitMethod === 'shares' ? parseFloat(sharesWeights[uid] ?? '1') || 1 : undefined,
+          percentage: splitMethod === 'percentage' ? parseFloat(percentages[uid] ?? '0') || 0 : undefined,
+          exactAmount: (splitMethod === 'exact' || splitMethod === 'unequally') ? parseFloat(exactShares[uid] ?? '0') || 0 : undefined,
         };
       });
 
@@ -737,6 +756,97 @@ export const AddExpenseScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
+        {/* Live Method Summary Banner */}
+        {splitMethod === 'shares' && (
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: colors.surfaceVariant,
+              paddingHorizontal: spacing.md,
+              paddingVertical: 10,
+              borderRadius: borderRadius.md,
+              marginBottom: spacing.sm,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Icon name="pie-chart" size={16} color={colors.primary} />
+              <Text
+                style={[
+                  typography.caption,
+                  { color: colors.textPrimary, fontWeight: '700', marginLeft: 6 },
+                ]}
+              >
+                Total: {totalShares} {totalShares === 1 ? 'share' : 'shares'}
+              </Text>
+            </View>
+            <Text style={[typography.caption, { color: colors.primary, fontWeight: '700' }]}>
+              {formatMoney(perShareAmount, currency)} / share
+            </Text>
+          </View>
+        )}
+
+        {splitMethod === 'percentage' && (
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor:
+                Math.round(totalPercentage) === 100
+                  ? colors.primaryLight
+                  : colors.surfaceVariant,
+              paddingHorizontal: spacing.md,
+              paddingVertical: 10,
+              borderRadius: borderRadius.md,
+              marginBottom: spacing.sm,
+              borderWidth: 1,
+              borderColor:
+                Math.round(totalPercentage) === 100
+                  ? colors.primary
+                  : totalPercentage > 100
+                  ? colors.danger
+                  : colors.border,
+            }}
+          >
+            <Text
+              style={[
+                typography.caption,
+                {
+                  color:
+                    totalPercentage > 100
+                      ? colors.danger
+                      : colors.textPrimary,
+                  fontWeight: '700',
+                },
+              ]}
+            >
+              Total Allocated: {totalPercentage.toFixed(1)}% / 100%
+            </Text>
+            <Text
+              style={[
+                typography.caption,
+                {
+                  color:
+                    Math.round(totalPercentage) === 100
+                      ? colors.primary
+                      : totalPercentage > 100
+                      ? colors.danger
+                      : colors.textSecondary,
+                  fontWeight: '700',
+                },
+              ]}
+            >
+              {Math.round(totalPercentage) === 100
+                ? 'Balanced ✓'
+                : totalPercentage > 100
+                ? `${(totalPercentage - 100).toFixed(1)}% over`
+                : `${(100 - totalPercentage).toFixed(1)}% left`}
+            </Text>
+          </View>
+        )}
+
         {availableParticipants.map(participant => {
           const isIncluded = includedParticipantIds.includes(participant.userId);
           const sharesObj = calculatedOutput.shares as Record<string, number> | undefined;
@@ -835,30 +945,79 @@ export const AddExpenseScreen: React.FC = () => {
                 </View>
               )}
 
+              {/* Shares stepper for each member */}
               {isIncluded && splitMethod === 'shares' && (
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <TextInput
-                    value={sharesWeights[participant.userId] || '1'}
-                    onChangeText={val =>
-                      setSharesWeights(prev => ({ ...prev, [participant.userId]: val }))
-                    }
-                    placeholder="1"
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="number-pad"
-                    style={[
-                      styles.smallInput,
-                      {
-                        backgroundColor: colors.surfaceVariant,
-                        borderColor: colors.border,
-                        borderRadius: borderRadius.sm,
-                        color: colors.textPrimary,
-                        width: 50,
-                      },
-                    ]}
-                  />
-                  <Text style={[typography.caption, { color: colors.textSecondary, marginLeft: 4 }]}>
-                    pts
-                  </Text>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: colors.surfaceVariant,
+                    borderRadius: borderRadius.full,
+                    paddingHorizontal: 4,
+                    paddingVertical: 2,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      const current = parseFloat(sharesWeights[participant.userId] ?? '1') || 1;
+                      const next = Math.max(1, current - 1);
+                      setSharesWeights(prev => ({ ...prev, [participant.userId]: String(next) }));
+                    }}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: colors.surface,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Icon name="minus" size={12} color={colors.textPrimary} />
+                  </TouchableOpacity>
+
+                  <View style={{ minWidth: 46, alignItems: 'center', paddingHorizontal: 4 }}>
+                    <Text
+                      style={[
+                        typography.bodySmall,
+                        { color: colors.textPrimary, fontWeight: '700' },
+                      ]}
+                    >
+                      {sharesWeights[participant.userId] || '1'}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 8,
+                        color: colors.textSecondary,
+                        marginTop: -2,
+                        textTransform: 'uppercase',
+                        fontWeight: '600',
+                      }}
+                    >
+                      {(sharesWeights[participant.userId] || '1') === '1' ? 'share' : 'shares'}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      const current = parseFloat(sharesWeights[participant.userId] ?? '1') || 1;
+                      const next = current + 1;
+                      setSharesWeights(prev => ({ ...prev, [participant.userId]: String(next) }));
+                    }}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: colors.primary,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Icon name="plus" size={12} color="#FFFFFF" />
+                  </TouchableOpacity>
                 </View>
               )}
             </View>

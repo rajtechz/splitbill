@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,9 @@ import { Icon } from '../../../components/common/Icon';
 import { SettlementCard } from '../../../components/cards/SettlementCard';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { ProPaywallModal } from '../../../components/modals/ProPaywallModal';
+import { QuickPayModal } from '../../../components/modals/QuickPayModal';
 import { formatMoney } from '../../../utils/money';
+import { getPeopleDebts, PersonDebtDetail } from '../calculations/debtEngine';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type BalancesRouteProp = RouteProp<MainTabParamList, 'BalancesTab'>;
@@ -33,6 +35,8 @@ export const BalancesScreen: React.FC = () => {
 
   const {
     friends,
+    groups,
+    expenses,
     settlements,
     balanceSummary,
     simplifiedDebts,
@@ -44,6 +48,10 @@ export const BalancesScreen: React.FC = () => {
   const isPro = useAuthStore(state => state.isPro);
   const [showProModal, setShowProModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Quick Pay Modal State
+  const [selectedPersonToPay, setSelectedPersonToPay] = useState<PersonDebtDetail | null>(null);
+  const [showQuickPayModal, setShowQuickPayModal] = useState(false);
 
   // Filter tabs: 'all' | 'owe' (kisko dena hai) | 'owed' (kisse lena hai)
   const [activeTab, setActiveTab] = useState<'all' | 'owe' | 'owed'>(route.params?.filter || 'all');
@@ -63,15 +71,29 @@ export const BalancesScreen: React.FC = () => {
     }
   };
 
-  const friendsWhoOweYou = friends.filter(f => f.netBalance > 0);
-  const friendsYouOwe = friends.filter(f => f.netBalance < 0);
+  // Comprehensive calculation of who you owe and who owes you across ALL expenses & settlements
+  const { peopleYouOwe, peopleWhoOweYou } = useMemo(() => {
+    return getPeopleDebts(
+      expenses,
+      settlements,
+      friends,
+      groups,
+      balanceSummary.currency,
+      currentUser
+    );
+  }, [expenses, settlements, friends, groups, balanceSummary.currency, currentUser]);
 
-  const handleRemindFriend = async (friendName: string, amount: number) => {
+  const handleRemindPerson = async (name: string, amount: number) => {
     try {
       await Share.share({
-        message: `Hi ${friendName}, gentle reminder regarding ₹${amount} on SplitMate. Whenever convenient, please settle up!`,
+        message: `Hi ${name}, gentle reminder regarding ₹${amount} on SplitMate. Whenever convenient, please settle up!`,
       });
     } catch {}
+  };
+
+  const handleOpenPay = (person: PersonDebtDetail) => {
+    setSelectedPersonToPay(person);
+    setShowQuickPayModal(true);
   };
 
   return (
@@ -141,7 +163,7 @@ export const BalancesScreen: React.FC = () => {
                 },
               ]}
             >
-              All ({friendsWhoOweYou.length + friendsYouOwe.length})
+              All ({peopleWhoOweYou.length + peopleYouOwe.length})
             </Text>
           </TouchableOpacity>
 
@@ -176,7 +198,7 @@ export const BalancesScreen: React.FC = () => {
                   },
                 ]}
               >
-                You Are Owed ({friendsWhoOweYou.length})
+                You Are Owed ({peopleWhoOweYou.length})
               </Text>
             </View>
           </TouchableOpacity>
@@ -212,7 +234,7 @@ export const BalancesScreen: React.FC = () => {
                   },
                 ]}
               >
-                You Owe ({friendsYouOwe.length})
+                You Owe ({peopleYouOwe.length})
               </Text>
             </View>
           </TouchableOpacity>
@@ -344,17 +366,17 @@ export const BalancesScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Section: Friends Who Owe You (Kisse lena hai) */}
+        {/* Section: People Who Owe You (Kisse lena hai) */}
         {(activeTab === 'all' || activeTab === 'owed') && (
           <View style={{ marginBottom: spacing.lg }}>
             <View style={[styles.sectionHeader, { alignItems: 'flex-start' }]}>
               <View style={{ flex: 1, paddingRight: 10 }}>
                 <Text style={[typography.h3, { color: colors.textPrimary }]}>
-                  {activeTab === 'owed' ? 'People Who Owe You' : 'Friends Who Owe You'}
+                  People Who Owe You
                 </Text>
                 <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
                   {activeTab === 'owed' ? 'Kisse Lena Hai • ' : ''}
-                  {friendsWhoOweYou.length} {friendsWhoOweYou.length === 1 ? 'person owes' : 'people owe'} you
+                  {peopleWhoOweYou.length} {peopleWhoOweYou.length === 1 ? 'person owes' : 'people owe'} you
                 </Text>
               </View>
               {activeTab === 'owed' && (
@@ -368,18 +390,22 @@ export const BalancesScreen: React.FC = () => {
                   }}
                 >
                   <Text style={[typography.titleMedium, { color: colors.success, fontWeight: '800' }]}>
-                    +{formatMoney(balanceSummary.youAreOwed, balanceSummary.currency)}
+                    +{formatMoney(balanceSummary.youAreOwed, balanceSummary.currency, { absolute: true })}
                   </Text>
                 </View>
               )}
             </View>
 
-            {friendsWhoOweYou.length > 0 ? (
-              friendsWhoOweYou.map(friend => (
+            {peopleWhoOweYou.length > 0 ? (
+              peopleWhoOweYou.map(person => (
                 <TouchableOpacity
-                  key={friend.id}
+                  key={person.userId || person.name}
                   activeOpacity={0.7}
-                  onPress={() => navigation.navigate('FriendDetails', { friendId: friend.id })}
+                  onPress={() => {
+                    if (person.friendId) {
+                      navigation.navigate('FriendDetails', { friendId: person.friendId });
+                    }
+                  }}
                   style={[
                     styles.personBalanceCard,
                     {
@@ -390,23 +416,24 @@ export const BalancesScreen: React.FC = () => {
                     },
                   ]}
                 >
-                  <Avatar name={friend.name} url={friend.avatarUrl} size={44} />
+                  <Avatar name={person.name} url={person.avatarUrl} size={44} />
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                      {friend.name}
+                      {person.name}
                     </Text>
                     <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                      {friend.email}
+                      {person.groupName ? `${person.groupName} • ` : ''}
+                      {person.email || person.phoneNumber || 'SplitMate Member'}
                     </Text>
                     <Text style={[typography.bodySmall, { color: colors.success, fontWeight: '700', marginTop: 2 }]}>
-                      Owes you {formatMoney(friend.netBalance, friend.currency)}
+                      Owes you {formatMoney(person.amount, person.currency, { absolute: true })}
                     </Text>
                   </View>
 
                   <View style={styles.actionPills}>
                     <TouchableOpacity
                       activeOpacity={0.7}
-                      onPress={() => handleRemindFriend(friend.name, friend.netBalance)}
+                      onPress={() => handleRemindPerson(person.name, person.amount)}
                       style={[styles.smallBtn, { backgroundColor: colors.surfaceVariant }]}
                     >
                       <Text style={[typography.caption, { color: colors.textPrimary, fontWeight: '600' }]}>
@@ -418,15 +445,15 @@ export const BalancesScreen: React.FC = () => {
                       activeOpacity={0.7}
                       onPress={() =>
                         navigation.navigate('RecordSettlement', {
-                          preselectedPayerId: friend.userId,
+                          preselectedPayerId: person.userId,
                           preselectedReceiverId: currentUser?.id,
-                          suggestedAmount: friend.netBalance,
-                          currency: friend.currency,
+                          suggestedAmount: person.amount,
+                          currency: person.currency,
                         })
                       }
-                      style={[styles.smallBtn, { backgroundColor: colors.primaryLight, marginLeft: 6 }]}
+                      style={[styles.smallBtn, { backgroundColor: colors.successLight, marginLeft: 6 }]}
                     >
-                      <Text style={[typography.caption, { color: colors.primary, fontWeight: '700' }]}>
+                      <Text style={[typography.caption, { color: colors.success, fontWeight: '800' }]}>
                         Settle
                       </Text>
                     </TouchableOpacity>
@@ -436,24 +463,24 @@ export const BalancesScreen: React.FC = () => {
             ) : (
               <EmptyState
                 title="Nobody owes you"
-                description="You are all settled up with your friends!"
+                description="You are all settled up with your group members and friends!"
                 iconName="check"
               />
             )}
           </View>
         )}
 
-        {/* Section: Friends You Owe (Kisko dena hai) */}
+        {/* Section: People You Owe (Kisko dena hai) */}
         {(activeTab === 'all' || activeTab === 'owe') && (
           <View style={{ marginBottom: spacing.lg }}>
             <View style={[styles.sectionHeader, { alignItems: 'flex-start' }]}>
               <View style={{ flex: 1, paddingRight: 10 }}>
                 <Text style={[typography.h3, { color: colors.textPrimary }]}>
-                  {activeTab === 'owe' ? 'People You Owe' : 'Friends You Owe'}
+                  People You Owe
                 </Text>
                 <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
                   {activeTab === 'owe' ? 'Kisko Dena Hai • ' : ''}
-                  You owe {friendsYouOwe.length} {friendsYouOwe.length === 1 ? 'person' : 'people'}
+                  You owe {peopleYouOwe.length} {peopleYouOwe.length === 1 ? 'person' : 'people'}
                 </Text>
               </View>
               {activeTab === 'owe' && (
@@ -467,18 +494,18 @@ export const BalancesScreen: React.FC = () => {
                   }}
                 >
                   <Text style={[typography.titleMedium, { color: colors.danger, fontWeight: '800' }]}>
-                    -{formatMoney(balanceSummary.youOwe, balanceSummary.currency)}
+                    -{formatMoney(balanceSummary.youOwe, balanceSummary.currency, { absolute: true })}
                   </Text>
                 </View>
               )}
             </View>
 
-            {friendsYouOwe.length > 0 ? (
-              friendsYouOwe.map(friend => (
+            {peopleYouOwe.length > 0 ? (
+              peopleYouOwe.map(person => (
                 <TouchableOpacity
-                  key={friend.id}
+                  key={person.userId || person.name}
                   activeOpacity={0.7}
-                  onPress={() => navigation.navigate('FriendDetails', { friendId: friend.id })}
+                  onPress={() => handleOpenPay(person)}
                   style={[
                     styles.personBalanceCard,
                     {
@@ -489,35 +516,61 @@ export const BalancesScreen: React.FC = () => {
                     },
                   ]}
                 >
-                  <Avatar name={friend.name} url={friend.avatarUrl} size={44} />
+                  <Avatar name={person.name} url={person.avatarUrl} size={44} />
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                      {friend.name}
+                      {person.name}
                     </Text>
                     <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                      {friend.email}
+                      {person.groupName ? `${person.groupName} • ` : ''}
+                      {person.upiId || person.email || 'UPI Ready'}
                     </Text>
                     <Text style={[typography.bodySmall, { color: colors.danger, fontWeight: '700', marginTop: 2 }]}>
-                      You owe {formatMoney(Math.abs(friend.netBalance), friend.currency)}
+                      You owe {formatMoney(person.amount, person.currency, { absolute: true })}
                     </Text>
                   </View>
 
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() =>
-                      navigation.navigate('RecordSettlement', {
-                        preselectedPayerId: currentUser?.id,
-                        preselectedReceiverId: friend.userId,
-                        suggestedAmount: Math.abs(friend.netBalance),
-                        currency: friend.currency,
-                      })
-                    }
-                    style={[styles.smallBtn, { backgroundColor: colors.dangerLight }]}
-                  >
-                    <Text style={[typography.caption, { color: colors.danger, fontWeight: '700' }]}>
-                      Pay Now
-                    </Text>
-                  </TouchableOpacity>
+                  <View style={styles.actionPills}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handleOpenPay(person)}
+                      style={[
+                        styles.smallBtn,
+                        {
+                          backgroundColor: colors.primary,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                        },
+                      ]}
+                    >
+                      <Icon name="arrow-up-right" size={12} color="#FFFFFF" />
+                      <Text
+                        style={[
+                          typography.caption,
+                          { color: '#FFFFFF', fontWeight: '800', marginLeft: 4 },
+                        ]}
+                      >
+                        Pay Now
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() =>
+                        navigation.navigate('RecordSettlement', {
+                          preselectedPayerId: currentUser?.id,
+                          preselectedReceiverId: person.userId,
+                          suggestedAmount: person.amount,
+                          currency: person.currency,
+                        })
+                      }
+                      style={[styles.smallBtn, { backgroundColor: colors.surfaceVariant, marginLeft: 6 }]}
+                    >
+                      <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '700' }]}>
+                        Settle
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </TouchableOpacity>
               ))
             ) : (
@@ -559,6 +612,23 @@ export const BalancesScreen: React.FC = () => {
           </>
         )}
       </ScrollView>
+
+      <QuickPayModal
+        visible={showQuickPayModal}
+        person={selectedPersonToPay}
+        onClose={() => {
+          setShowQuickPayModal(false);
+          setSelectedPersonToPay(null);
+        }}
+        onNavigateToDetailed={person => {
+          navigation.navigate('RecordSettlement', {
+            preselectedPayerId: currentUser?.id,
+            preselectedReceiverId: person.userId,
+            suggestedAmount: person.amount,
+            currency: person.currency,
+          });
+        }}
+      />
 
       <ProPaywallModal
         visible={showProModal}

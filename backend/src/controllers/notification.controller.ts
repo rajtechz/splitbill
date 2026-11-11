@@ -4,8 +4,9 @@ import { store } from '../data/store.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { notificationProvider } from '../services/providers/index.js';
 
-export const getNotifications = async (_req: AuthenticatedRequest, res: Response) => {
-  const notifications = store.getNotifications();
+export const getNotifications = async (req: AuthenticatedRequest, res: Response) => {
+  const currentUserId = req.user?.id || 'usr_me';
+  const notifications = store.getNotifications(currentUserId);
   return sendSuccess(res, notifications);
 };
 

@@ -203,8 +203,10 @@ export interface Activity {
 
 export interface AppNotification {
   id: string;
+  recipientId?: string;
   title: string;
   message: string;
+  body?: string;
   timestamp: string;
   read: boolean;
   type: 'expense' | 'settlement' | 'invite' | 'reminder';

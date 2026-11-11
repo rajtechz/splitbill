@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { Icon } from '../../../components/common/Icon';
 import { EmptyState } from '../../../components/common/EmptyState';
 import { ConfirmationModal } from '../../../components/modals/ConfirmationModal';
 import { formatMoney } from '../../../utils/money';
+import { isUserMatch } from '../../../utils/userMatch';
 import { format } from 'date-fns';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -57,10 +58,24 @@ export const ExpenseDetailsScreen: React.FC = () => {
     formattedDate = expense.date;
   }
 
-  const userParticipant = expense.participants.find(p => p.userId === currentUser?.id);
+  const userParticipant = expense.participants.find(p => isUserMatch(p, currentUser));
   const userNet = (userParticipant?.paidAmount || 0) - (userParticipant?.shareAmount || 0);
   const isNetPositive = userNet > 0;
-  const isNetZero = Math.abs(userNet) < 0.01;
+  const isNetZero = !userParticipant || Math.abs(userNet) < 0.01;
+
+  // Security check: Only the person who created or paid for this expense is authorized to edit or delete it
+  const isPayerOrCreator = useMemo(() => {
+    if (!currentUser) return false;
+    const isCreator =
+      expense.createdBy === currentUser.id ||
+      isUserMatch({ userId: expense.createdBy, name: expense.createdBy }, currentUser);
+    const isPayer = expense.participants.some(
+      p => p.paidAmount > 0 && isUserMatch(p, currentUser)
+    );
+    return isCreator || isPayer;
+  }, [expense, currentUser]);
+
+  const payerParticipant = expense.participants.find(p => p.paidAmount > 0) || expense.participants[0];
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -68,14 +83,22 @@ export const ExpenseDetailsScreen: React.FC = () => {
         title="Expense Details"
         showBack
         onBack={() => navigation.goBack()}
-        rightAction={{
-          icon: 'edit',
-          onPress: () => navigation.navigate('EditExpense', { expenseId: expense.id }),
-        }}
-        secondaryRightAction={{
-          icon: 'trash',
-          onPress: () => setShowDeleteModal(true),
-        }}
+        rightAction={
+          isPayerOrCreator
+            ? {
+                icon: 'edit',
+                onPress: () => navigation.navigate('EditExpense', { expenseId: expense.id }),
+              }
+            : undefined
+        }
+        secondaryRightAction={
+          isPayerOrCreator
+            ? {
+                icon: 'trash',
+                onPress: () => setShowDeleteModal(true),
+              }
+            : undefined
+        }
       />
 
       <ScrollView
@@ -151,6 +174,30 @@ export const ExpenseDetailsScreen: React.FC = () => {
                 : `You borrowed ${formatMoney(Math.abs(userNet), expense.currency)}`}
             </Text>
           </View>
+
+          {/* Read-Only Fraud-Protection Security Notice */}
+          {!isPayerOrCreator && (
+            <View
+              style={[
+                styles.readOnlyNotice,
+                {
+                  backgroundColor: colors.surfaceVariant,
+                  borderColor: colors.borderSubtle,
+                  borderRadius: borderRadius.md,
+                },
+              ]}
+            >
+              <Icon name="lock" size={14} color={colors.textSecondary} />
+              <Text
+                style={[
+                  typography.caption,
+                  { color: colors.textSecondary, marginLeft: 8, flex: 1, fontWeight: '500' },
+                ]}
+              >
+                Added by {payerParticipant?.name || 'payer'}. Only the payer can edit or delete this expense.
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Paid By Breakdown */}
@@ -179,7 +226,7 @@ export const ExpenseDetailsScreen: React.FC = () => {
               <Avatar name={p.name} url={p.avatarUrl} size={36} />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                  {p.userId === currentUser?.id ? 'You' : p.name}
+                  {isUserMatch(p, currentUser) ? `${p.name} (You)` : p.name}
                 </Text>
                 <Text style={[typography.caption, { color: colors.textSecondary }]}>
                   Paid in full or contribution
@@ -220,10 +267,20 @@ export const ExpenseDetailsScreen: React.FC = () => {
               <Avatar name={p.name} url={p.avatarUrl} size={36} />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                  {p.userId === currentUser?.id ? `${p.name} (You)` : p.name}
+                  {isUserMatch(p, currentUser) ? `${p.name} (You)` : p.name}
                 </Text>
                 <Text style={[typography.caption, { color: colors.textSecondary }]}>
                   Share: {formatMoney(p.shareAmount, expense.currency)}
+                  {expense.splitMethod === 'shares' && (
+                    <Text style={{ color: colors.primary, fontWeight: '700' }}>
+                      {` • ${p.shares ?? 1} ${(p.shares ?? 1) === 1 ? 'share' : 'shares'}`}
+                    </Text>
+                  )}
+                  {expense.splitMethod === 'percentage' && p.percentage !== undefined && (
+                    <Text style={{ color: colors.primary, fontWeight: '700' }}>
+                      {` • ${p.percentage}%`}
+                    </Text>
+                  )}
                 </Text>
               </View>
 
@@ -311,6 +368,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
+  },
+  readOnlyNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderWidth: 1,
+    marginTop: 10,
   },
   participantRow: {
     flexDirection: 'row',

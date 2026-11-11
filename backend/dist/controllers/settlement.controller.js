@@ -38,14 +38,18 @@ const recordSettlement = async (req, res) => {
     };
     store_js_1.store.createSettlement(newSettlement);
     (0, balance_service_js_1.recalculateBalances)(currentUserId);
-    // Send push notification to payment receiver
-    index_js_1.notificationProvider.sendPush({
-        userId: newSettlement.receiverId,
-        type: 'payment_received',
-        title: 'Payment Received!',
-        body: `${newSettlement.payerName} paid you ${newSettlement.currency} ${newSettlement.amount.toLocaleString()} via ${newSettlement.paymentMethod}`,
-        actionData: { settlementId: newSettlement.id, groupId: newSettlement.groupId || '' },
-    });
+    // Send push notification ONLY to payment receiver (never to the payer themselves)
+    const isPayerTheReceiver = newSettlement.receiverId === currentUserId ||
+        (req.user?.name && newSettlement.receiverName.toLowerCase().trim() === req.user.name.toLowerCase().trim());
+    if (!isPayerTheReceiver) {
+        index_js_1.notificationProvider.sendPush({
+            userId: newSettlement.receiverId,
+            type: 'payment_received',
+            title: 'Payment Received!',
+            body: `${newSettlement.payerName} paid you ${newSettlement.currency} ${newSettlement.amount.toLocaleString()} via ${newSettlement.paymentMethod}`,
+            actionData: { settlementId: newSettlement.id, groupId: newSettlement.groupId || '' },
+        });
+    }
     // Log activity
     store_js_1.store.createActivity({
         id: `act_${Date.now()}`,

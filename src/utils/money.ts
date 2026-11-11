@@ -27,14 +27,26 @@ export const formatMoney = (
   options?: { showSign?: boolean; absolute?: boolean }
 ): string => {
   const curr = SUPPORTED_CURRENCIES[currency] || SUPPORTED_CURRENCIES.INR;
-  const targetAmount = options?.absolute ? Math.abs(amount) : amount;
-  const formattedNumber = targetAmount.toLocaleString('en-IN', {
+  const absAmount = Math.abs(amount);
+  const formattedNumber = absAmount.toLocaleString('en-IN', {
     minimumFractionDigits: curr.decimals,
     maximumFractionDigits: curr.decimals,
   });
 
-  const sign = options?.showSign && amount > 0 ? '+' : options?.showSign && amount < 0 ? '-' : '';
+  if (options?.absolute) {
+    return `${curr.symbol}${formattedNumber}`;
+  }
 
-  return `${sign}${curr.symbol}${formattedNumber}`;
+  if (options?.showSign) {
+    if (amount > 0) return `+${curr.symbol}${formattedNumber}`;
+    if (amount < 0) return `-${curr.symbol}${formattedNumber}`;
+    return `${curr.symbol}${formattedNumber}`;
+  }
+
+  if (amount < 0) {
+    return `-${curr.symbol}${formattedNumber}`;
+  }
+
+  return `${curr.symbol}${formattedNumber}`;
 };
 

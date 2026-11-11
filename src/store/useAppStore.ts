@@ -89,12 +89,23 @@ export const useAppStore = create<AppState>((set, get) => ({
         repository.getNotifications(),
       ]);
 
-      const currentUserId = useAuthStore.getState().currentUser?.id || 'usr_me';
-      const balance = calculateUserBalance(currentUserId, expenses, settlements, 'INR');
-      const simplified = simplifyDebts(expenses, settlements, 'INR');
+      const currentUser = useAuthStore.getState().currentUser;
+      const currentUserId = currentUser?.id || 'usr_me';
+      const balance = calculateUserBalance(currentUserId, expenses, settlements, 'INR', currentUser);
+      const simplified = simplifyDebts(expenses, settlements, 'INR', currentUser);
+
+      const enrichedGroups = groups.map(grp => {
+        const groupExpenses = expenses.filter(e => e.groupId === grp.id);
+        const groupSettlements = settlements.filter(s => s.groupId === grp.id);
+        const groupBal = calculateUserBalance(currentUserId, groupExpenses, groupSettlements, grp.currency, currentUser);
+        return {
+          ...grp,
+          userBalance: groupBal.totalBalance,
+        };
+      });
 
       set({
-        groups,
+        groups: enrichedGroups,
         friends,
         expenses,
         settlements,
@@ -124,12 +135,23 @@ export const useAppStore = create<AppState>((set, get) => ({
         repository.getNotifications(),
       ]);
 
-      const currentUserId = useAuthStore.getState().currentUser?.id || 'usr_me';
-      const balance = calculateUserBalance(currentUserId, expenses, settlements, 'INR');
-      const simplified = simplifyDebts(expenses, settlements, 'INR');
+      const currentUser = useAuthStore.getState().currentUser;
+      const currentUserId = currentUser?.id || 'usr_me';
+      const balance = calculateUserBalance(currentUserId, expenses, settlements, 'INR', currentUser);
+      const simplified = simplifyDebts(expenses, settlements, 'INR', currentUser);
+
+      const enrichedGroups = groups.map(grp => {
+        const groupExpenses = expenses.filter(e => e.groupId === grp.id);
+        const groupSettlements = settlements.filter(s => s.groupId === grp.id);
+        const groupBal = calculateUserBalance(currentUserId, groupExpenses, groupSettlements, grp.currency, currentUser);
+        return {
+          ...grp,
+          userBalance: groupBal.totalBalance,
+        };
+      });
 
       set({
-        groups,
+        groups: enrichedGroups,
         friends,
         expenses,
         settlements,

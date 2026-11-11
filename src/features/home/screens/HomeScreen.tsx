@@ -50,7 +50,16 @@ export const HomeScreen: React.FC = () => {
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const currentUserName = (currentUser?.name || '').toLowerCase().trim();
+  const currentUserId = currentUser?.id || '';
+  const unreadCount = notifications.filter(n => {
+    if (n.read) return false;
+    if (n.recipientId && currentUserId && n.recipientId !== currentUserId) return false;
+    const text = ((n.message || n.body || '') + ' ' + (n.title || '')).toLowerCase();
+    if (currentUserName && text.includes(`${currentUserName} paid you`)) return false;
+    if (currentUserName && text.includes(`${currentUserName} added`) && text.includes('your share is')) return false;
+    return true;
+  }).length;
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -256,6 +265,8 @@ export const HomeScreen: React.FC = () => {
             <ExpenseCard
               key={exp.id}
               expense={exp}
+              currentUserId={currentUser?.id}
+              currentUserName={currentUser?.name}
               onPress={() => navigation.navigate('ExpenseDetails', { expenseId: exp.id })}
             />
           ))

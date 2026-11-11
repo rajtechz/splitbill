@@ -65,7 +65,14 @@ class Store {
       this.data.expenses = (expenses || []) as any;
       this.data.settlements = (settlements || []) as any;
       this.data.activities = (activities || []) as any;
-      this.data.notifications = (notifications || []) as any;
+      this.data.notifications = ((notifications || []) as any).filter((n: any) => {
+        const text = ((n.body || '') + ' ' + (n.message || '')).toLowerCase();
+        if (text.includes('kd paid you') || text.includes('you paid you')) {
+          NotificationModel.deleteOne({ id: n.id }).catch(() => {});
+          return false;
+        }
+        return true;
+      });
 
       console.log('🔄 [SplitMate DB] Store populated directly from MongoDB collections (Zero JSON file dependencies)');
     } catch (err: any) {
@@ -391,8 +398,34 @@ class Store {
   }
 
   // --- Notifications ---
-  getNotifications(): AppNotification[] {
-    return [...this.data.notifications];
+  getNotifications(userId?: string): AppNotification[] {
+    if (!userId) {
+      return [...this.data.notifications];
+    }
+    const user = this.findUserById(userId);
+    const userName = (user?.name || '').toLowerCase().trim();
+
+    return this.data.notifications.filter(n => {
+      // 1. If notification has recipientId, it MUST match the user
+      if (n.recipientId) {
+        return n.recipientId === userId;
+      }
+
+      // 2. If no recipientId (legacy/seed data), filter out self-targeted messages
+      if (userName) {
+        const lowerText = ((n.body || '') + ' ' + (n.message || '')).toLowerCase();
+        // User cannot be the recipient of a "User paid you" notification
+        if (lowerText.includes(`${userName} paid you`)) {
+          return false;
+        }
+        // User cannot be the recipient of "User added [Expense]. Your share is"
+        if (lowerText.includes(`${userName} added`) && lowerText.includes('your share is')) {
+          return false;
+        }
+      }
+
+      return true;
+    });
   }
 
   markNotificationAsRead(id: string): boolean {

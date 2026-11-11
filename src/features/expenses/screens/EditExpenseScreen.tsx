@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ import {
   ExpenseParticipant,
 } from '../../../types';
 import { formatMoney } from '../../../utils/money';
+import { isUserMatch } from '../../../utils/userMatch';
 import {
   calculateEqualSplit,
   calculateExactSplit,
@@ -68,6 +69,28 @@ export const EditExpenseScreen: React.FC = () => {
   const [category, setCategory] = useState<ExpenseCategory>(expense?.category || 'Food');
   const [notes, setNotes] = useState(expense?.notes || '');
   const [splitMethod, setSplitMethod] = useState<SplitMethod>(expense?.splitMethod || 'equally');
+
+  // Security check: Only the person who created or paid for this expense is authorized to edit it
+  const isPayerOrCreator = useMemo(() => {
+    if (!currentUser || !expense) return false;
+    const isCreator =
+      expense.createdBy === currentUser.id ||
+      isUserMatch({ userId: expense.createdBy, name: expense.createdBy }, currentUser);
+    const isPayer = expense.participants.some(
+      p => p.paidAmount > 0 && isUserMatch(p, currentUser)
+    );
+    return isCreator || isPayer;
+  }, [expense, currentUser]);
+
+  useEffect(() => {
+    if (expense && !isPayerOrCreator) {
+      Alert.alert(
+        'Permission Denied',
+        'You do not have permission to edit this expense. Only the member who created or paid for this expense can modify it.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    }
+  }, [expense, isPayerOrCreator, navigation]);
 
   // Contact Picker Modal
   const [showContactsModal, setShowContactsModal] = useState(false);
@@ -154,15 +177,88 @@ export const EditExpenseScreen: React.FC = () => {
   // Split details: Exact amounts, percentages, shares
   const [exactShares, setExactShares] = useState<Record<string, string>>(() => {
     const map: Record<string, string> = {};
-    if (expense) {
+    if (expense?.participants) {
       for (const p of expense.participants) {
-        map[p.userId] = p.shareAmount.toString();
+        if (p.exactAmount !== undefined) {
+          map[p.userId] = String(p.exactAmount);
+        } else {
+          map[p.userId] = String(p.shareAmount);
+        }
       }
     }
     return map;
   });
-  const [percentages, setPercentages] = useState<Record<string, string>>({});
-  const [sharesWeights, setSharesWeights] = useState<Record<string, string>>({});
+
+  const [percentages, setPercentages] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    if (expense?.participants) {
+      for (const p of expense.participants) {
+        if (p.percentage !== undefined) {
+          map[p.userId] = String(p.percentage);
+        } else if (expense.totalAmount > 0) {
+          const pct = ((p.shareAmount / expense.totalAmount) * 100).toFixed(1);
+          map[p.userId] = String(pct);
+        }
+      }
+    }
+    return map;
+  });
+
+  const [sharesWeights, setSharesWeights] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    if (expense?.participants) {
+      const nonZeroShares = expense.participants.map(p => p.shareAmount).filter(amt => amt > 0);
+      const minShare = nonZeroShares.length > 0 ? Math.min(...nonZeroShares) : 0;
+
+      for (const p of expense.participants) {
+        if (p.shares !== undefined && p.shares > 0) {
+          map[p.userId] = String(p.shares);
+        } else if (expense.splitMethod === 'shares' && minShare > 0) {
+          const calculatedRatio = Math.round(p.shareAmount / minShare);
+          map[p.userId] = String(calculatedRatio > 0 ? calculatedRatio : 1);
+        } else {
+          map[p.userId] = '1';
+        }
+      }
+    }
+    return map;
+  });
+
+  // Sync state whenever expense changes
+  useEffect(() => {
+    if (!expense) return;
+    const nonZeroShares = expense.participants.map(p => p.shareAmount).filter(amt => amt > 0);
+    const minShare = nonZeroShares.length > 0 ? Math.min(...nonZeroShares) : 0;
+    const sMap: Record<string, string> = {};
+    const pMap: Record<string, string> = {};
+    const eMap: Record<string, string> = {};
+
+    for (const p of expense.participants) {
+      if (p.shares !== undefined && p.shares > 0) {
+        sMap[p.userId] = String(p.shares);
+      } else if (expense.splitMethod === 'shares' && minShare > 0) {
+        const calculatedRatio = Math.round(p.shareAmount / minShare);
+        sMap[p.userId] = String(calculatedRatio > 0 ? calculatedRatio : 1);
+      } else {
+        sMap[p.userId] = '1';
+      }
+
+      if (p.percentage !== undefined) {
+        pMap[p.userId] = String(p.percentage);
+      } else if (expense.totalAmount > 0) {
+        pMap[p.userId] = ((p.shareAmount / expense.totalAmount) * 100).toFixed(1);
+      }
+
+      if (p.exactAmount !== undefined) {
+        eMap[p.userId] = String(p.exactAmount);
+      } else {
+        eMap[p.userId] = String(p.shareAmount);
+      }
+    }
+    setSharesWeights(sMap);
+    setPercentages(pMap);
+    setExactShares(eMap);
+  }, [expense]);
 
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -237,6 +333,22 @@ export const EditExpenseScreen: React.FC = () => {
     currency,
   ]);
 
+  const totalPercentage = useMemo(() => {
+    return includedParticipantIds.reduce(
+      (sum, id) => sum + (parseFloat(percentages[id]) || 0),
+      0
+    );
+  }, [includedParticipantIds, percentages]);
+
+  const totalShares = useMemo(() => {
+    return includedParticipantIds.reduce(
+      (sum, id) => sum + (parseFloat(sharesWeights[id]) || 1),
+      0
+    );
+  }, [includedParticipantIds, sharesWeights]);
+
+  const perShareAmount = totalShares > 0 ? parsedAmount / totalShares : 0;
+
   const handleSave = async () => {
     if (!title.trim()) {
       setErrorMsg('Please enter an expense title');
@@ -291,6 +403,11 @@ export const EditExpenseScreen: React.FC = () => {
 
     if (!expense) return;
 
+    if (!isPayerOrCreator) {
+      setErrorMsg('Access Denied: Only the member who created or paid for this expense can edit it.');
+      return;
+    }
+
     setSaving(true);
     setErrorMsg(null);
 
@@ -307,6 +424,9 @@ export const EditExpenseScreen: React.FC = () => {
           paidAmount,
           shareAmount,
           netBalance: paidAmount - shareAmount,
+          shares: splitMethod === 'shares' ? parseFloat(sharesWeights[uid] ?? '1') || 1 : undefined,
+          percentage: splitMethod === 'percentage' ? parseFloat(percentages[uid] ?? '0') || 0 : undefined,
+          exactAmount: (splitMethod === 'exact' || splitMethod === 'unequally') ? parseFloat(exactShares[uid] ?? '0') || 0 : undefined,
         };
       });
 
@@ -624,6 +744,97 @@ export const EditExpenseScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
+        {/* Live Method Summary Banner */}
+        {splitMethod === 'shares' && (
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: colors.surfaceVariant,
+              paddingHorizontal: spacing.md,
+              paddingVertical: 10,
+              borderRadius: borderRadius.md,
+              marginBottom: spacing.sm,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Icon name="pie-chart" size={16} color={colors.primary} />
+              <Text
+                style={[
+                  typography.caption,
+                  { color: colors.textPrimary, fontWeight: '700', marginLeft: 6 },
+                ]}
+              >
+                Total: {totalShares} {totalShares === 1 ? 'share' : 'shares'}
+              </Text>
+            </View>
+            <Text style={[typography.caption, { color: colors.primary, fontWeight: '700' }]}>
+              {formatMoney(perShareAmount, currency)} / share
+            </Text>
+          </View>
+        )}
+
+        {splitMethod === 'percentage' && (
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor:
+                Math.round(totalPercentage) === 100
+                  ? colors.primaryLight
+                  : colors.surfaceVariant,
+              paddingHorizontal: spacing.md,
+              paddingVertical: 10,
+              borderRadius: borderRadius.md,
+              marginBottom: spacing.sm,
+              borderWidth: 1,
+              borderColor:
+                Math.round(totalPercentage) === 100
+                  ? colors.primary
+                  : totalPercentage > 100
+                  ? colors.danger
+                  : colors.border,
+            }}
+          >
+            <Text
+              style={[
+                typography.caption,
+                {
+                  color:
+                    totalPercentage > 100
+                      ? colors.danger
+                      : colors.textPrimary,
+                  fontWeight: '700',
+                },
+              ]}
+            >
+              Total Allocated: {totalPercentage.toFixed(1)}% / 100%
+            </Text>
+            <Text
+              style={[
+                typography.caption,
+                {
+                  color:
+                    Math.round(totalPercentage) === 100
+                      ? colors.primary
+                      : totalPercentage > 100
+                      ? colors.danger
+                      : colors.textSecondary,
+                  fontWeight: '700',
+                },
+              ]}
+            >
+              {Math.round(totalPercentage) === 100
+                ? 'Balanced ✓'
+                : totalPercentage > 100
+                ? `${(totalPercentage - 100).toFixed(1)}% over`
+                : `${(100 - totalPercentage).toFixed(1)}% left`}
+            </Text>
+          </View>
+        )}
+
         {/* Participants Cards with Custom Money / Share Inputs */}
         {availableParticipants.map(participant => {
           const isIncluded = includedParticipantIds.includes(participant.userId);
@@ -724,31 +935,79 @@ export const EditExpenseScreen: React.FC = () => {
                 </View>
               )}
 
-              {/* Shares input for each member */}
+              {/* Shares stepper for each member */}
               {isIncluded && splitMethod === 'shares' && (
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <TextInput
-                    value={sharesWeights[participant.userId] || '1'}
-                    onChangeText={val =>
-                      setSharesWeights(prev => ({ ...prev, [participant.userId]: val }))
-                    }
-                    placeholder="1"
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="number-pad"
-                    style={[
-                      styles.smallInput,
-                      {
-                        backgroundColor: colors.surfaceVariant,
-                        borderColor: colors.border,
-                        borderRadius: borderRadius.sm,
-                        color: colors.textPrimary,
-                        width: 50,
-                      },
-                    ]}
-                  />
-                  <Text style={[typography.caption, { color: colors.textSecondary, marginLeft: 4 }]}>
-                    pts
-                  </Text>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: colors.surfaceVariant,
+                    borderRadius: borderRadius.full,
+                    paddingHorizontal: 4,
+                    paddingVertical: 2,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      const current = parseFloat(sharesWeights[participant.userId] ?? '1') || 1;
+                      const next = Math.max(1, current - 1);
+                      setSharesWeights(prev => ({ ...prev, [participant.userId]: String(next) }));
+                    }}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: colors.surface,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Icon name="minus" size={12} color={colors.textPrimary} />
+                  </TouchableOpacity>
+
+                  <View style={{ minWidth: 46, alignItems: 'center', paddingHorizontal: 4 }}>
+                    <Text
+                      style={[
+                        typography.bodySmall,
+                        { color: colors.textPrimary, fontWeight: '700' },
+                      ]}
+                    >
+                      {sharesWeights[participant.userId] || '1'}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 8,
+                        color: colors.textSecondary,
+                        marginTop: -2,
+                        textTransform: 'uppercase',
+                        fontWeight: '600',
+                      }}
+                    >
+                      {(sharesWeights[participant.userId] || '1') === '1' ? 'share' : 'shares'}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      const current = parseFloat(sharesWeights[participant.userId] ?? '1') || 1;
+                      const next = current + 1;
+                      setSharesWeights(prev => ({ ...prev, [participant.userId]: String(next) }));
+                    }}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: colors.primary,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Icon name="plus" size={12} color="#FFFFFF" />
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
