@@ -31,18 +31,13 @@ This document contains the complete checklist of all third-party services, API k
 
 ---
 
-### ④ 24/7 Production Server Hosting & SSL Domain — [NEXT STEP ⏳]
-* **Purpose:** Permanently stores bill photos, receipt snapshots, and profile avatars. Cloud hosting containers (Render, Railway, Heroku) have ephemeral disks that wipe uploaded local files whenever the server reboots or deploys.
-* **Recommended Provider:** [Cloudinary](https://cloudinary.com) *(Simplest setup, automated compression & image resizing)* OR **AWS S3**
-* **Pricing:** **Free Tier (25 GB storage and bandwidth, zero cost)**
-* **How to Get (Cloudinary):**
-  1. Sign up for a free account at [cloudinary.com](https://cloudinary.com).
-  2. From the Dashboard, copy **Cloud Name**, **API Key**, and **API Secret**.
-* **Environment Variables:**
-  ```env
-  STORAGE_PROVIDER=cloudinary
-  CLOUDINARY_CLOUD_NAME=your_cloud_name
-  CLOUDINARY_API_KEY=your_api_key
+### ④ 24/7 Production Server Hosting & SSL Domain — [COMPLETED ✅]
+* **Status:** **DEPLOYED & LIVE**
+* **Primary URL:** `https://splitbill-backend-o2on.onrender.com`
+* **Health Check:** `https://splitbill-backend-o2on.onrender.com/health` (verified active!)
+* **Base API Endpoint:** `https://splitbill-backend-o2on.onrender.com/api/v1`
+* **Hosting Provider:** Render.com (Free Tier)
+
   CLOUDINARY_API_SECRET=your_api_secret
   ```
   *(Alternative if using AWS S3: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET`)*

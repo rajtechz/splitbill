@@ -9,26 +9,33 @@ export interface AppConfig {
   useMockApi: boolean;
 }
 
+/**
+ * BACKEND ENVIRONMENT SWITCH
+ * Set to true:  Points to live production cloud server (Render + MongoDB Atlas)
+ * Set to false: Points to your local machine (localhost:3000 for iOS / 10.0.2.2:3000 for Android)
+ */
+export const USE_PRODUCTION_BACKEND = true;
+
 export const DEFAULT_DEV_API_URLS = {
   androidEmulator: 'http://10.0.2.2:3000/api/v1',
   iosSimulator: 'http://localhost:3000/api/v1',
-  production: 'https://api.splitmate.app/v1',
+  production: 'https://splitbill-backend-o2on.onrender.com/api/v1',
 };
 
 export const getDefaultApiBaseUrl = (): string => {
-  if (__DEV__) {
-    return Platform.OS === 'android'
-      ? DEFAULT_DEV_API_URLS.androidEmulator
-      : DEFAULT_DEV_API_URLS.iosSimulator;
+  if (USE_PRODUCTION_BACKEND) {
+    return DEFAULT_DEV_API_URLS.production;
   }
-  return DEFAULT_DEV_API_URLS.production;
+  return Platform.OS === 'android'
+    ? DEFAULT_DEV_API_URLS.androidEmulator
+    : DEFAULT_DEV_API_URLS.iosSimulator;
 };
 
 export const config: AppConfig = {
   appName: 'SplitMate',
   appVersion: '1.0.0',
   apiBaseUrl: getDefaultApiBaseUrl(),
-  apiTimeoutMs: 5000,
+  apiTimeoutMs: 30000, // 30s timeout for cloud servers (Render free tier spin-up & mobile networks)
   environment: __DEV__ ? 'development' : 'production',
   useMockApi: false, // Always use live backend connected to MongoDB
 };

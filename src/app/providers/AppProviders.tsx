@@ -5,7 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { ThemeProvider, useTheme } from '../../theme';
 import { storage } from '../../services/storage';
-import { updateConfig } from '../config';
+import { updateConfig, DEFAULT_DEV_API_URLS, USE_PRODUCTION_BACKEND, getDefaultApiBaseUrl } from '../config';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,8 +29,15 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
           storage.getApiBaseUrl(),
           storage.getUseMockApi(),
         ]);
-        if (savedUrl) {
+        if (USE_PRODUCTION_BACKEND) {
+          updateConfig({ apiBaseUrl: DEFAULT_DEV_API_URLS.production });
+          await storage.setApiBaseUrl(DEFAULT_DEV_API_URLS.production);
+        } else if (savedUrl) {
           updateConfig({ apiBaseUrl: savedUrl });
+        } else {
+          const defaultUrl = getDefaultApiBaseUrl();
+          updateConfig({ apiBaseUrl: defaultUrl });
+          await storage.setApiBaseUrl(defaultUrl);
         }
         // Always use live REST backend API & MongoDB (do not use mock data)
         updateConfig({ useMockApi: false });
