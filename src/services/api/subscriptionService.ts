@@ -86,7 +86,7 @@ export const subscriptionService = {
    */
   async cancelSubscription(): Promise<{ success: boolean; message: string; user?: User }> {
     try {
-      const res = await apiClient.post('/subscriptions/cancel');
+      const res = await apiClient.post('/subscriptions/cancel', {}, { timeout: 5000 });
       if (res.data?.data) {
         return res.data.data;
       }

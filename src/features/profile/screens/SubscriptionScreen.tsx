@@ -56,7 +56,7 @@ const COMPARISON_FEATURES = [
 
 export const SubscriptionScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { colors, typography, borderRadius, shadows } = useTheme();
+  const { colors, typography, borderRadius, shadows, isDark } = useTheme();
   const { isPro, currentUser, upgradeToPro, downgradeToFree } = useAuthStore();
   const { showAlert } = useAlert();
 
@@ -128,24 +128,27 @@ export const SubscriptionScreen: React.FC = () => {
     }
   };
 
-  const handleCancelSubscription = async () => {
+  const handleCancelSubscription = () => {
     showAlert({
       title: 'Cancel Pro Subscription',
-      message: 'Are you sure you want to revert to the Free tier?',
+      message: 'Are you sure you want to revert to the Free tier? You will lose unlimited receipt OCR scanning and advanced exports.',
       variant: 'danger',
       confirmText: 'Cancel Plan',
       cancelText: 'Keep Pro',
       isDestructive: true,
       onConfirm: async () => {
-        try {
-          await subscriptionService.cancelSubscription();
-        } catch (e) {
-          // Continue local downgrade even if network fails
-        }
+        // 1. Instantly downgrade auth state optimistically
         await downgradeToFree();
+
+        // 2. Notify backend in background (graceful catch)
+        subscriptionService.cancelSubscription().catch(err => {
+          console.warn('Backend subscription cancellation warning:', err);
+        });
+
+        // 3. Show instant confirmation alert
         showAlert({
           title: 'Subscription Cancelled',
-          message: 'You are now on the Free tier.',
+          message: 'You have been successfully reverted to the Free tier.',
           variant: 'info',
           confirmText: 'OK',
         });
@@ -293,16 +296,19 @@ export const SubscriptionScreen: React.FC = () => {
         ) : (
           <View style={styles.section}>
             <TouchableOpacity
+              activeOpacity={0.7}
               onPress={handleCancelSubscription}
               style={[
                 styles.cancelBtn,
                 {
-                  borderColor: colors.borderSubtle,
+                  backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : '#FEE2E2',
+                  borderColor: isDark ? 'rgba(239, 68, 68, 0.35)' : '#FCA5A5',
                   borderRadius: borderRadius.md,
                 },
               ]}
             >
-              <Text style={[typography.buttonMedium, { color: colors.danger }]}>
+              <Icon name="close" size={16} color={colors.danger} />
+              <Text style={[typography.buttonMedium, { color: colors.danger, fontWeight: '700' }]}>
                 Cancel Pro Subscription
               </Text>
             </TouchableOpacity>
@@ -525,10 +531,13 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   cancelBtn: {
-    paddingVertical: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+    gap: 8,
   },
   comparisonCard: {
     borderWidth: 1,

@@ -256,8 +256,13 @@ export const CustomAlertModal: React.FC<CustomAlertModalProps> = ({
                       key={`alert-btn-${idx}`}
                       activeOpacity={0.8}
                       onPress={() => {
-                        if (btn.onPress) btn.onPress();
+                        const action = btn.onPress;
                         if (onClose) onClose();
+                        if (action && action !== onClose) {
+                          setTimeout(() => {
+                            action();
+                          }, 120);
+                        }
                       }}
                       style={[
                         styles.actionButton,
