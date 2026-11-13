@@ -23,7 +23,7 @@ export const DEFAULT_DEV_API_URLS = {
 };
 
 export const getDefaultApiBaseUrl = (): string => {
-  if (USE_PRODUCTION_BACKEND) {
+  if (USE_PRODUCTION_BACKEND || !__DEV__) {
     return DEFAULT_DEV_API_URLS.production;
   }
   return Platform.OS === 'android'
