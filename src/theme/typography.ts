@@ -5,30 +5,35 @@ import { TextStyle, Platform } from 'react-native';
  * - iOS: 'Avenir Next' (Apple's clean geometric neo-grotesque font, perfect for fintech / expense sharing)
  * - Android: 'sans-serif' / 'sans-serif-medium' (Clean Material typeface with balanced optical kerning)
  */
+/**
+ * Modern Google Font: Poppins (Clean, Geometric Fintech Typeface)
+ * - Bundled in android/app/src/main/assets/fonts/ and ios/SplitMate/Fonts/
+ * - Perfect circular geometry, modern numbers, high optical legibility for expenses & currencies
+ */
 export const fontFamilies = {
   regular: Platform.select({
-    ios: 'Avenir Next',
-    android: 'sans-serif',
+    ios: 'Poppins-Regular',
+    android: 'Poppins-Regular',
     default: 'System',
   }),
   medium: Platform.select({
-    ios: 'Avenir Next',
-    android: 'sans-serif-medium',
+    ios: 'Poppins-Medium',
+    android: 'Poppins-Medium',
     default: 'System',
   }),
   semiBold: Platform.select({
-    ios: 'Avenir Next',
-    android: 'sans-serif-medium',
+    ios: 'Poppins-SemiBold',
+    android: 'Poppins-SemiBold',
     default: 'System',
   }),
   bold: Platform.select({
-    ios: 'Avenir Next',
-    android: 'sans-serif-medium',
+    ios: 'Poppins-Bold',
+    android: 'Poppins-Bold',
     default: 'System',
   }),
   numeric: Platform.select({
-    ios: 'Avenir Next',
-    android: 'sans-serif-medium',
+    ios: 'Poppins-SemiBold',
+    android: 'Poppins-SemiBold',
     default: 'System',
   }),
 };
@@ -106,6 +111,7 @@ export const typography = {
     lineHeight: 38,
     fontWeight: '700' as TextStyle['fontWeight'],
     letterSpacing: -0.8,
+    fontVariant: ['tabular-nums' as const],
   },
   amountMedium: {
     fontFamily: fontFamilies.numeric,
@@ -113,6 +119,7 @@ export const typography = {
     lineHeight: 26,
     fontWeight: '700' as TextStyle['fontWeight'],
     letterSpacing: -0.4,
+    fontVariant: ['tabular-nums' as const],
   },
   amountSmall: {
     fontFamily: fontFamilies.numeric,
@@ -120,6 +127,7 @@ export const typography = {
     lineHeight: 20,
     fontWeight: '600' as TextStyle['fontWeight'],
     letterSpacing: -0.2,
+    fontVariant: ['tabular-nums' as const],
   },
 };
 

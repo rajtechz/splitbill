@@ -31,6 +31,7 @@ export const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sendingOtp, setSendingOtp] = useState(false);
 
@@ -231,24 +232,45 @@ export const LoginScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
 
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Enter password"
-              placeholderTextColor={colors.textMuted}
-              secureTextEntry
+            <View
               style={[
-                styles.input,
-                typography.bodyMedium,
+                styles.passwordInputContainer,
                 {
                   backgroundColor: colors.surface,
                   borderColor: colors.border,
                   borderRadius: borderRadius.md,
-                  color: colors.textPrimary,
                   marginBottom: 16,
                 },
               ]}
-            />
+            >
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Enter password"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry={!showPassword}
+                style={[
+                  styles.passwordTextInput,
+                  typography.bodyMedium,
+                  {
+                    color: colors.textPrimary,
+                  },
+                ]}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={styles.eyeButton}
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                accessibilityRole="button"
+              >
+                <Icon
+                  name={showPassword ? 'eye-off' : 'eye'}
+                  size={20}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            </View>
           </>
         ) : (
           /* PHONE OTP LOGIN FORM */
@@ -356,6 +378,26 @@ const styles = StyleSheet.create({
     height: 48,
     borderWidth: 1,
     paddingHorizontal: 16,
+  },
+  passwordInputContainer: {
+    height: 48,
+    borderWidth: 1,
+    paddingLeft: 16,
+    paddingRight: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  passwordTextInput: {
+    flex: 1,
+    height: '100%',
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+  },
+  eyeButton: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   footerRow: {
     flexDirection: 'row',
