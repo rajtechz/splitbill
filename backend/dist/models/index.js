@@ -49,6 +49,8 @@ const UserSchema = new mongoose_1.Schema({
     mPin: { type: String, default: '1234' },
     isPinEnabled: { type: Boolean, default: false },
     isBiometricsEnabled: { type: Boolean, default: false },
+    subscriptionTier: { type: String, enum: ['free', 'pro'], default: 'free' },
+    subscriptionExpiresAt: { type: String },
     createdAt: { type: String, required: true },
     updatedAt: { type: String },
 }, { timestamps: false, versionKey: false });

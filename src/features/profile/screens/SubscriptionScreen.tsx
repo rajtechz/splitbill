@@ -5,13 +5,16 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../../theme';
 import { useAuthStore } from '../../../store/useAuthStore';
+import { useAlert } from '../../../context/AlertContext';
 import { AppHeader } from '../../../components/common/AppHeader';
 import { Icon } from '../../../components/common/Icon';
+import { subscriptionService, RazorpayOrderResponse } from '../../../services/api/subscriptionService';
+import { RazorpayModal } from '../../../components/modals/RazorpayModal';
 
 interface PlanOption {
   id: 'annual' | 'monthly';
@@ -55,37 +58,99 @@ export const SubscriptionScreen: React.FC = () => {
   const navigation = useNavigation();
   const { colors, typography, borderRadius, shadows } = useTheme();
   const { isPro, currentUser, upgradeToPro, downgradeToFree } = useAuthStore();
+  const { showAlert } = useAlert();
 
   const [selectedPlan, setSelectedPlan] = useState<'annual' | 'monthly'>('annual');
   const [upgrading, setUpgrading] = useState(false);
+  const [razorpayOrder, setRazorpayOrder] = useState<RazorpayOrderResponse | null>(null);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
 
   const handleSubscribe = async () => {
     setUpgrading(true);
-    await upgradeToPro(selectedPlan);
-    setUpgrading(false);
-    Alert.alert(
-      '🎉 Welcome to SplitMate Pro!',
-      'Your subscription is now active. All premium features including AI receipt scanning, CSV export, and smart debt simplification are unlocked!',
-      [{ text: 'Great!', onPress: () => navigation.goBack() }]
-    );
+    try {
+      const order = await subscriptionService.createRazorpayOrder(selectedPlan);
+      setRazorpayOrder(order);
+      setPaymentModalVisible(true);
+    } catch (error: any) {
+      showAlert({
+        title: 'Order Creation Failed',
+        message:
+          error?.response?.data?.message ||
+          error.message ||
+          'Failed to connect to Razorpay. Please check your network and try again.',
+        variant: 'danger',
+        confirmText: 'OK',
+      });
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
+  const handlePaymentSuccess = async (paymentData: {
+    paymentId: string;
+    orderId: string;
+    signature: string;
+  }) => {
+    setPaymentModalVisible(false);
+    setUpgrading(true);
+    try {
+      const verifyResult = await subscriptionService.verifyRazorpayPayment({
+        orderId: paymentData.orderId,
+        paymentId: paymentData.paymentId,
+        signature: paymentData.signature,
+        plan: selectedPlan,
+      });
+
+      await upgradeToPro(selectedPlan);
+
+      showAlert({
+        title: 'Welcome to SplitMate Pro!',
+        message:
+          verifyResult?.message ||
+          'Your subscription is now active. All premium features including AI receipt scanning, CSV export, and smart debt simplification are unlocked!',
+        variant: 'celebration',
+        emoji: '🎉',
+        confirmText: 'Great!',
+        onConfirm: () => navigation.goBack(),
+      });
+    } catch (error: any) {
+      showAlert({
+        title: 'Payment Verification Error',
+        message:
+          error?.response?.data?.message ||
+          error.message ||
+          'Could not verify your payment signature with Razorpay.',
+        variant: 'danger',
+        confirmText: 'OK',
+      });
+    } finally {
+      setUpgrading(false);
+    }
   };
 
   const handleCancelSubscription = async () => {
-    Alert.alert(
-      'Cancel Pro Subscription',
-      'Are you sure you want to revert to the Free tier?',
-      [
-        { text: 'Keep Pro', style: 'cancel' },
-        {
-          text: 'Cancel Plan',
-          style: 'destructive',
-          onPress: async () => {
-            await downgradeToFree();
-            Alert.alert('Subscription Cancelled', 'You are now on the Free tier.');
-          },
-        },
-      ]
-    );
+    showAlert({
+      title: 'Cancel Pro Subscription',
+      message: 'Are you sure you want to revert to the Free tier?',
+      variant: 'danger',
+      confirmText: 'Cancel Plan',
+      cancelText: 'Keep Pro',
+      isDestructive: true,
+      onConfirm: async () => {
+        try {
+          await subscriptionService.cancelSubscription();
+        } catch (e) {
+          // Continue local downgrade even if network fails
+        }
+        await downgradeToFree();
+        showAlert({
+          title: 'Subscription Cancelled',
+          message: 'You are now on the Free tier.',
+          variant: 'info',
+          confirmText: 'OK',
+        });
+      },
+    });
   };
 
   return (
@@ -209,14 +274,20 @@ export const SubscriptionScreen: React.FC = () => {
                 },
               ]}
             >
-              <Text style={styles.subscribeBtnText}>
-                {selectedPlan === 'annual' ? 'Start 7-Day Free Trial' : 'Upgrade to Pro Now'}
-              </Text>
-              <Text style={styles.subscribeBtnSub}>
-                {selectedPlan === 'annual'
-                  ? '7 days free, then ₹1,499/year. Cancel anytime.'
-                  : '₹199/month. Cancel anytime.'}
-              </Text>
+              {upgrading ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  <Text style={styles.subscribeBtnText}>
+                    {selectedPlan === 'annual' ? 'Start 7-Day Free Trial' : 'Upgrade to Pro Now'}
+                  </Text>
+                  <Text style={styles.subscribeBtnSub}>
+                    {selectedPlan === 'annual'
+                      ? '7 days free, then ₹1,499/year. Cancel anytime.'
+                      : '₹199/month. Cancel anytime.'}
+                  </Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         ) : (
@@ -313,6 +384,22 @@ export const SubscriptionScreen: React.FC = () => {
           Payment will be charged to your Apple App Store or Google Play account. Subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current billing cycle.
         </Text>
       </ScrollView>
+
+      {/* Razorpay Payment Modal */}
+      <RazorpayModal
+        visible={paymentModalVisible}
+        order={razorpayOrder}
+        onClose={() => setPaymentModalVisible(false)}
+        onSuccess={handlePaymentSuccess}
+        onError={(errMsg) => {
+          showAlert({
+            title: 'Payment Failed',
+            message: errMsg,
+            variant: 'danger',
+            confirmText: 'OK',
+          });
+        }}
+      />
     </View>
   );
 };

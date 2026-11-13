@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { ThemeProvider, useTheme } from '../../theme';
+import { AlertProvider } from '../../context/AlertContext';
 import { storage } from '../../services/storage';
 import { updateConfig, DEFAULT_DEV_API_URLS, USE_PRODUCTION_BACKEND, getDefaultApiBaseUrl } from '../config';
 
@@ -54,7 +55,9 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
       <SafeAreaProvider>
         <ThemeProvider>
           <ThemedStatusBar />
-          <NavigationContainer>{children}</NavigationContainer>
+          <AlertProvider>
+            <NavigationContainer>{children}</NavigationContainer>
+          </AlertProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </QueryClientProvider>
