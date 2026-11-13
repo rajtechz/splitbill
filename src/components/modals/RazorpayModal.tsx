@@ -39,9 +39,10 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
 
   const displayAmount = `₹${(order.amount / 100).toLocaleString('en-IN')}`;
 
-  const handleOpenBrowserCheckout = async () => {
+  const handleOpenBrowserCheckout = async (upiApp?: string) => {
     try {
-      const checkoutUrl = `${config.apiBaseUrl}/subscriptions/razorpay/checkout?orderId=${order.orderId}&amount=${order.amount}&keyId=${order.keyId}&name=${encodeURIComponent(order.name)}&description=${encodeURIComponent(order.description)}&email=${encodeURIComponent(order.prefill?.email || '')}&phone=${encodeURIComponent(order.prefill?.contact || '')}&userName=${encodeURIComponent(order.prefill?.name || '')}`;
+      const upiParam = upiApp ? `&upi_app=${encodeURIComponent(upiApp)}` : '';
+      const checkoutUrl = `${config.apiBaseUrl}/subscriptions/razorpay/checkout?orderId=${order.orderId}&amount=${order.amount}&keyId=${order.keyId}&name=${encodeURIComponent(order.name)}&description=${encodeURIComponent(order.description)}&email=${encodeURIComponent(order.prefill?.email || '')}&phone=${encodeURIComponent(order.prefill?.contact || '')}&userName=${encodeURIComponent(order.prefill?.name || '')}${upiParam}`;
 
       const supported = await Linking.canOpenURL(checkoutUrl);
       if (supported) {
@@ -173,6 +174,68 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
             </View>
           </View>
 
+          {/* Direct UPI Apps Selector */}
+          <View style={styles.upiAppsContainer}>
+            <Text style={[typography.caption, styles.channelsLabel, { color: colors.textMuted }]}>
+              PAY DIRECTLY VIA UPI APPS
+            </Text>
+            <View style={styles.upiAppsRow}>
+              {/* PhonePe */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handleOpenBrowserCheckout('phonepe')}
+                style={[
+                  styles.upiAppBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(95, 37, 159, 0.22)' : '#F5F3FF',
+                    borderColor: isDark ? 'rgba(147, 51, 234, 0.45)' : '#DDD6FE',
+                  },
+                ]}
+              >
+                <View style={[styles.upiAppBadge, { backgroundColor: '#5F259F' }]}>
+                  <Text style={styles.upiAppBadgeText}>P</Text>
+                </View>
+                <Text style={[styles.upiAppName, { color: colors.textPrimary }]}>PhonePe</Text>
+              </TouchableOpacity>
+
+              {/* Google Pay */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handleOpenBrowserCheckout('google_pay')}
+                style={[
+                  styles.upiAppBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(26, 115, 232, 0.2)' : '#EFF6FF',
+                    borderColor: isDark ? 'rgba(59, 130, 246, 0.45)' : '#BFDBFE',
+                  },
+                ]}
+              >
+                <View style={[styles.upiAppBadge, { backgroundColor: '#1A73E8' }]}>
+                  <Text style={styles.upiAppBadgeText}>G</Text>
+                </View>
+                <Text style={[styles.upiAppName, { color: colors.textPrimary }]}>GPay</Text>
+              </TouchableOpacity>
+
+              {/* Paytm */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => handleOpenBrowserCheckout('paytm')}
+                style={[
+                  styles.upiAppBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(0, 186, 242, 0.2)' : '#F0FDFA',
+                    borderColor: isDark ? 'rgba(20, 184, 166, 0.45)' : '#99F6E4',
+                  },
+                ]}
+              >
+                <View style={[styles.upiAppBadge, { backgroundColor: '#00BAF2' }]}>
+                  <Text style={styles.upiAppBadgeText}>₹</Text>
+                </View>
+                <Text style={[styles.upiAppName, { color: colors.textPrimary }]}>Paytm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* Action Buttons */}
           <View style={styles.actions}>
             {/* 1. Instant Sandbox Test Simulator */}
@@ -210,7 +273,7 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
             {/* 2. Official Browser Checkout Button */}
             <TouchableOpacity
               activeOpacity={0.85}
-              onPress={handleOpenBrowserCheckout}
+              onPress={() => handleOpenBrowserCheckout()}
               disabled={processing}
               style={[
                 styles.secondaryBtn,
@@ -379,7 +442,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   channelsContainer: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   channelsLabel: {
     fontSize: 10,
@@ -404,6 +467,40 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  upiAppsContainer: {
+    marginBottom: 16,
+  },
+  upiAppsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  upiAppBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 6,
+  },
+  upiAppBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upiAppBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  upiAppName: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   actions: {
     width: '100%',

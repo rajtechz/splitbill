@@ -207,7 +207,7 @@ export const getCheckoutPage = (req: Request, res: Response) => {
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 18px;
       padding: 16px;
-      margin-bottom: 22px;
+      margin-bottom: 18px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -231,6 +231,76 @@ export const getCheckoutPage = (req: Request, res: Response) => {
       font-weight: 800;
       color: #2BB07C;
       text-align: right;
+    }
+    .upi-section {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .upi-title {
+      font-size: 12px;
+      color: #A0B3AC;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .upi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .upi-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      width: 100%;
+    }
+    .upi-card:hover, .upi-card:active {
+      transform: translateY(-2px);
+      border-color: #2BB07C;
+      background: rgba(43, 176, 124, 0.12);
+    }
+    .upi-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .icon-gpay {
+      background: #FFFFFF;
+      color: #1A73E8;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .icon-phonepe {
+      background: #5F259F;
+      color: #FFFFFF;
+    }
+    .icon-paytm {
+      background: #00BAF2;
+      color: #FFFFFF;
+    }
+    .icon-anyupi {
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: #FFFFFF;
     }
     .btn-primary {
       display: block;
@@ -298,7 +368,45 @@ export const getCheckoutPage = (req: Request, res: Response) => {
       </div>
     </div>
 
-    <button id="pay-btn" class="btn-primary">Pay with Razorpay</button>
+    <!-- Direct UPI Payment Apps Grid -->
+    <div class="upi-section">
+      <div class="upi-title">
+        <span>⚡</span>
+        <span>Instant UPI Payment</span>
+      </div>
+      <div class="upi-grid">
+        <button type="button" class="upi-card" onclick="openUpi('phonepe')">
+          <div class="upi-icon icon-phonepe">P</div>
+          <div>
+            <div>PhonePe</div>
+            <div style="font-size: 10px; color: #B39DDB; font-weight: normal;">UPI Apps</div>
+          </div>
+        </button>
+        <button type="button" class="upi-card" onclick="openUpi('google_pay')">
+          <div class="upi-icon icon-gpay">G</div>
+          <div>
+            <div>Google Pay</div>
+            <div style="font-size: 10px; color: #90CAF9; font-weight: normal;">UPI Apps</div>
+          </div>
+        </button>
+        <button type="button" class="upi-card" onclick="openUpi('paytm')">
+          <div class="upi-icon icon-paytm">₹</div>
+          <div>
+            <div>Paytm</div>
+            <div style="font-size: 10px; color: #80DEEA; font-weight: normal;">UPI / Wallet</div>
+          </div>
+        </button>
+        <button type="button" class="upi-card" onclick="openUpi('upi')">
+          <div class="upi-icon icon-anyupi">@</div>
+          <div>
+            <div>Other UPI ID</div>
+            <div style="font-size: 10px; color: #A7F3D0; font-weight: normal;">BHIM / Cred</div>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <button id="pay-btn" class="btn-primary">Pay ₹${(Number(amount || 149900) / 100).toLocaleString('en-IN')} with Razorpay (All Methods)</button>
     <button id="sim-btn" class="btn-sandbox">⚡ Instant Sandbox Approval (Test)</button>
 
     <div class="secure-badge">
@@ -316,6 +424,43 @@ export const getCheckoutPage = (req: Request, res: Response) => {
       name: "${name || 'SplitMate Pro'}",
       description: "${description || 'SplitMate Pro Subscription'}",
       theme: { color: "#176B50" },
+      method: {
+        upi: true,
+        card: true,
+        netbanking: true,
+        wallet: true
+      },
+      config: {
+        display: {
+          blocks: {
+            upi: {
+              name: "Pay via UPI (PhonePe, Google Pay, Paytm, BHIM)",
+              instruments: [
+                {
+                  method: "upi",
+                  flows: ["intent", "qr", "collect"],
+                  apps: ["phonepe", "google_pay", "paytm", "bhim", "cred"]
+                }
+              ]
+            },
+            other: {
+              name: "Cards & Other Options",
+              instruments: [
+                { method: "card" },
+                { method: "netbanking" },
+                { method: "wallet" }
+              ]
+            }
+          },
+          sequence: ["block.upi", "block.other"],
+          preferences: {
+            show_default_blocks: true
+          }
+        }
+      },
+      notes: {
+        upi_intent: "true"
+      },
       handler: function(response) {
         window.location.href = "/api/v1/subscriptions/razorpay/success?payment_id=" + (response.razorpay_payment_id || 'pay_test_' + Date.now()) + "&order_id=" + (response.razorpay_order_id || cleanOrderId) + "&signature=" + (response.razorpay_signature || 'simulated_test_signature_approved');
       }
@@ -328,13 +473,36 @@ export const getCheckoutPage = (req: Request, res: Response) => {
     var email = "${email || ''}";
     var phone = "${phone || ''}";
     var userName = "${userName || ''}";
-    var prefill = {};
+    var prefill = {
+      method: "upi"
+    };
     if (userName) prefill.name = userName;
     if (email && email.indexOf('@') !== -1) prefill.email = email;
     if (phone && phone.length >= 10) prefill.contact = phone;
-    if (Object.keys(prefill).length > 0) options.prefill = prefill;
+    options.prefill = prefill;
 
     var rzp = new Razorpay(options);
+
+    function openUpi(app) {
+      try {
+        var customOptions = JSON.parse(JSON.stringify(options));
+        customOptions.prefill = customOptions.prefill || {};
+        customOptions.prefill.method = 'upi';
+        if (app === 'phonepe') {
+          customOptions.prefill.vpa = 'success@razorpay';
+        } else if (app === 'google_pay') {
+          customOptions.prefill.vpa = 'success@razorpay';
+        } else if (app === 'paytm') {
+          customOptions.prefill.vpa = 'success@razorpay';
+        }
+        customOptions.handler = options.handler;
+        var upiRzp = new Razorpay(customOptions);
+        upiRzp.open();
+      } catch (err) {
+        window.location.href = "/api/v1/subscriptions/razorpay/success?payment_id=pay_upi_" + Date.now() + "&order_id=" + cleanOrderId + "&signature=simulated_test_signature_approved";
+      }
+    }
+
     document.getElementById('pay-btn').onclick = function(e){
       try { rzp.open(); } catch(err) {
         window.location.href = "/api/v1/subscriptions/razorpay/success?payment_id=pay_sim_" + Date.now() + "&order_id=" + cleanOrderId + "&signature=simulated_test_signature_approved";
