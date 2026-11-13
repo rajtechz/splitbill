@@ -16,7 +16,7 @@ interface EmptyStateProps {
 export const EmptyState: React.FC<EmptyStateProps> = ({
   title,
   description,
-  iconName = 'wallet',
+  iconName = 'receipt',
   actionTitle,
   onAction,
   style,

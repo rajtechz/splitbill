@@ -233,7 +233,7 @@ export const QuickPayModal: React.FC<QuickPayModalProps> = ({
                 },
               ]}
             >
-              <Icon name="wallet" size={18} color={colors.primary} />
+              <Icon name="zap" size={18} color={colors.primary} />
               <TextInput
                 value={upiId}
                 onChangeText={setUpiId}

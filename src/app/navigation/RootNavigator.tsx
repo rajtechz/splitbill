@@ -37,7 +37,8 @@ import { NotificationsScreen } from '../../features/notifications/screens/Notifi
 import { SearchScreen } from '../../features/home/screens/SearchScreen';
 import { EditProfileScreen } from '../../features/profile/screens/EditProfileScreen';
 import { SubscriptionScreen } from '../../features/profile/screens/SubscriptionScreen';
-import { WalletScreen } from '../../features/wallet/screens/WalletScreen';
+// [FUTURE UPDATE: SplitMate Digital Wallet]
+// import { WalletScreen } from '../../features/wallet/screens/WalletScreen';
 import { notificationService } from '../../services/native/notificationService';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -132,8 +133,10 @@ export const RootNavigator: React.FC = () => {
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
 
-          {/* Analytics, Notifications, Search, Profile, Wallet */}
+          {/* Analytics, Notifications, Search, Profile */}
+          {/* [FUTURE UPDATE: SplitMate Digital Wallet Screen]
           <Stack.Screen name="Wallet" component={WalletScreen} />
+          */}
           <Stack.Screen name="Analytics" component={AnalyticsScreen} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen name="Search" component={SearchScreen} />

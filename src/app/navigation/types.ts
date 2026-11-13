@@ -44,7 +44,8 @@ export type RootStackParamList = {
   };
 
   // Other modules
-  Wallet: undefined;
+  // [FUTURE UPDATE: SplitMate Digital Wallet]
+  // Wallet: undefined;
   Analytics: undefined;
   Notifications: undefined;
   Search: undefined;

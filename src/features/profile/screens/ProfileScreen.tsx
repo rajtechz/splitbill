@@ -24,7 +24,8 @@ import { useSecurityStore } from '../../../store/useSecurityStore';
 import { config } from '../../../app/config';
 import { SUPPORTED_CURRENCIES } from '../../../types';
 import { repository } from '../../../services/api/repository';
-import { useWalletStore } from '../../../store/useWalletStore';
+// [FUTURE UPDATE: SplitMate Digital Wallet]
+// import { useWalletStore } from '../../../store/useWalletStore';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -33,7 +34,8 @@ export const ProfileScreen: React.FC = () => {
   const { colors, typography, spacing, borderRadius, shadows, setMode, isDark } = useTheme();
   const { currentUser, logout, isPro, toggleProDev, updateUser } = useAuthStore();
   const { isPinEnabled, disablePin, isBiometricsEnabled, toggleBiometrics } = useSecurityStore();
-  const walletBalance = useWalletStore(state => state.balance);
+  // [FUTURE UPDATE: SplitMate Digital Wallet]
+  // const walletBalance = useWalletStore(state => state.balance);
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -200,7 +202,7 @@ export const ProfileScreen: React.FC = () => {
             { backgroundColor: colors.surface, borderRadius: borderRadius.lg, borderColor: colors.borderSubtle },
           ]}
         >
-          {/* SplitMate Digital Wallet Row */}
+          {/* [FUTURE UPDATE: SplitMate Digital Wallet Row]
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => navigation.navigate('Wallet')}
@@ -226,6 +228,7 @@ export const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
 
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+          */}
 
           {/* Dark Mode Row */}
           <View style={styles.settingRow}>
@@ -276,7 +279,7 @@ export const ProfileScreen: React.FC = () => {
           {/* Currency selection row */}
           <View style={styles.settingRow}>
             <View style={[styles.settingIcon, { backgroundColor: colors.warningLight }]}>
-              <Icon name="wallet" size={18} color={colors.warning} />
+              <Icon name="money" size={18} color={colors.warning} />
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>

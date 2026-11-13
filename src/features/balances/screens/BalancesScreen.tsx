@@ -101,10 +101,12 @@ export const BalancesScreen: React.FC = () => {
       <AppHeader
         title="Balances & Debt"
         subtitle="Track & simplify balances"
+        /* [FUTURE UPDATE: SplitMate Digital Wallet Action]
         rightAction={{
           icon: 'wallet',
           onPress: () => navigation.navigate('RecordSettlement', {}),
         }}
+        */
       />
 
       <ScrollView
@@ -606,7 +608,7 @@ export const BalancesScreen: React.FC = () => {
               <EmptyState
                 title="No payments recorded"
                 description="Record payments between friends to clear balances."
-                iconName="wallet"
+                iconName="receipt"
               />
             )}
           </>

@@ -154,7 +154,7 @@ export const GroupDetailsScreen: React.FC = () => {
               }
               style={[styles.btn, { backgroundColor: colors.primaryLight, marginLeft: 8 }]}
             >
-              <Icon name="wallet" size={16} color={colors.primary} />
+              <Icon name="check-circle" size={16} color={colors.primary} />
               <Text style={[typography.buttonMedium, { color: colors.primary, marginLeft: 6 }]}>
                 Settle Up
               </Text>

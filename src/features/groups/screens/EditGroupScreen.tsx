@@ -28,7 +28,7 @@ const GROUP_CATEGORIES: { key: GroupCategory; label: string; icon: IconName }[] 
   { key: 'Family', label: 'Family', icon: 'groups' },
   { key: 'Friends', label: 'Friends', icon: 'users' },
   { key: 'Office', label: 'Office', icon: 'shield' },
-  { key: 'Other', label: 'Other', icon: 'wallet' },
+  { key: 'Other', label: 'Other', icon: 'sparkles' },
 ];
 
 export const EditGroupScreen: React.FC = () => {

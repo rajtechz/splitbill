@@ -22,12 +22,15 @@ import { Avatar } from '../../../components/avatars/Avatar';
 import { Icon } from '../../../components/common/Icon';
 import { PaymentMethod, CurrencyCode, SettlementStatus } from '../../../types';
 import { initiateUpiTransfer } from '../../../utils/upi';
-import { useWalletStore } from '../../../store/useWalletStore';
+// [FUTURE UPDATE: SplitMate Digital Wallet]
+// import { useWalletStore } from '../../../store/useWalletStore';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RecordSettlementRouteProp = RouteProp<RootStackParamList, 'RecordSettlement'>;
 
-const PAYMENT_METHODS: PaymentMethod[] = ['SplitMate Wallet', 'UPI', 'Cash', 'Bank transfer', 'Other'];
+// [FUTURE UPDATE: Include 'SplitMate Wallet' in PAYMENT_METHODS]
+const PAYMENT_METHODS: PaymentMethod[] = ['UPI', 'Cash', 'Bank transfer', 'Other'];
+// const PAYMENT_METHODS: PaymentMethod[] = ['SplitMate Wallet', 'UPI', 'Cash', 'Bank transfer', 'Other'];
 
 export const RecordSettlementScreen: React.FC = () => {
   const route = useRoute<RecordSettlementRouteProp>();
@@ -44,7 +47,8 @@ export const RecordSettlementScreen: React.FC = () => {
 
   const { groups, friends, recordSettlement } = useAppStore();
   const currentUser = useAuthStore(state => state.currentUser);
-  const { balance: walletBalance, payFromWallet } = useWalletStore();
+  // [FUTURE UPDATE: SplitMate Digital Wallet]
+  // const { balance: walletBalance, payFromWallet } = useWalletStore();
 
   // Default payer and receiver
   const [payerId, setPayerId] = useState<string>(preselectedPayerId || currentUser?.id || 'usr_me');
@@ -163,6 +167,7 @@ export const RecordSettlementScreen: React.FC = () => {
       return;
     }
 
+    /* [FUTURE UPDATE: SplitMate Digital Wallet Payment Flow]
     if (paymentMethod === 'SplitMate Wallet') {
       if (walletBalance < parsedAmount) {
         Alert.alert(
@@ -183,6 +188,7 @@ export const RecordSettlementScreen: React.FC = () => {
         return;
       }
     }
+    */
 
     setSubmitting(true);
     setErrorMsg(null);
@@ -385,7 +391,7 @@ export const RecordSettlementScreen: React.FC = () => {
           })}
         </View>
 
-        {/* SplitMate Digital Wallet Section */}
+        {/* [FUTURE UPDATE: SplitMate Digital Wallet Section]
         {paymentMethod === 'SplitMate Wallet' && (
           <View
             style={[
@@ -451,6 +457,7 @@ export const RecordSettlementScreen: React.FC = () => {
             )}
           </View>
         )}
+        */}
 
         {/* UPI Specific Section */}
         {paymentMethod === 'UPI' && (

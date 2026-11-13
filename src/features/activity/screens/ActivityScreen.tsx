@@ -55,7 +55,7 @@ export const ActivityScreen: React.FC = () => {
       case 'member_added':
         return { icon: 'groups', color: colors.info, bg: colors.infoLight };
       default:
-        return { icon: 'wallet', color: colors.primary, bg: colors.primaryLight };
+        return { icon: 'receipt', color: colors.primary, bg: colors.primaryLight };
     }
   };
 

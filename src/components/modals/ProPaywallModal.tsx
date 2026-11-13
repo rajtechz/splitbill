@@ -43,7 +43,7 @@ const FEATURE_HIGHLIGHTS: Record<
   currency_converter: {
     title: 'Live Foreign Exchange Converter',
     subtitle: 'Convert foreign currency expenses automatically using real-time global exchange rates.',
-    icon: 'wallet',
+    icon: 'money',
   },
   unlimited_expenses: {
     title: 'Unlimited Daily Expenses',

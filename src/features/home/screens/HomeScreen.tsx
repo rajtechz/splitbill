@@ -20,7 +20,8 @@ import { BalanceCard } from '../../../components/cards/BalanceCard';
 import { GroupCard } from '../../../components/cards/GroupCard';
 import { ExpenseCard } from '../../../components/cards/ExpenseCard';
 import { EmptyState } from '../../../components/common/EmptyState';
-import { useWalletStore } from '../../../store/useWalletStore';
+// [FUTURE UPDATE: SplitMate Digital Wallet]
+// import { useWalletStore } from '../../../store/useWalletStore';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -38,7 +39,8 @@ export const HomeScreen: React.FC = () => {
   } = useAppStore();
   const currentUser = useAuthStore(state => state.currentUser);
   const isPro = useAuthStore(state => state.isPro);
-  const walletBalance = useWalletStore(state => state.balance);
+  // [FUTURE UPDATE: SplitMate Digital Wallet]
+  // const walletBalance = useWalletStore(state => state.balance);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -215,7 +217,7 @@ export const HomeScreen: React.FC = () => {
             onPress={() => navigation.navigate('RecordSettlement', {})}
             style={[styles.actionBtn, { backgroundColor: colors.primaryLight, marginLeft: 10 }]}
           >
-            <Icon name="wallet" size={18} color={colors.primary} />
+            <Icon name="check-circle" size={18} color={colors.primary} />
             <Text style={[typography.buttonMedium, { color: colors.primary, marginLeft: 6 }]}>
               Settle Up
             </Text>
@@ -230,7 +232,7 @@ export const HomeScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* SplitMate Digital Wallet Quick Card */}
+        {/* [FUTURE UPDATE: SplitMate Digital Wallet Quick Card]
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={() => navigation.navigate('Wallet')}
@@ -265,6 +267,7 @@ export const HomeScreen: React.FC = () => {
             </View>
           </View>
         </TouchableOpacity>
+        */}
 
         {/* Sponsored Ad Banner (Free Tier Only - 100% Ad-Free for Pro Members) */}
         {!isPro && (

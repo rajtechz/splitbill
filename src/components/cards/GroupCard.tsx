@@ -23,7 +23,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({ group, onPress, style }) =
       case 'Office':
         return 'groups';
       default:
-        return 'wallet';
+        return 'sparkles';
     }
   };
 
