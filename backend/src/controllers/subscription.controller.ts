@@ -751,21 +751,36 @@ export const getSuccessPage = (req: Request, res: Response) => {
     </button>
 
     <div id="status-hint" class="return-hint">
-      Swipe up or tap your SplitMate app to begin enjoying your Pro membership.
+      Tap <b>◀ SplitMate</b> in the top-left corner or tap the button above.
     </div>
   </div>
 
   <script>
     function handleReturnApp() {
       var hint = document.getElementById('status-hint');
+      var btn = document.getElementById('return-btn');
+      if (btn) {
+        btn.innerHTML = "✓ Pro Activated — Tap ◀ SplitMate at Top-Left";
+        btn.style.background = "#1D7C56";
+      }
       if (hint) {
-        hint.innerHTML = "✨ Returning to SplitMate... If your browser stays open, swipe up to return to the app!";
+        hint.innerHTML = "🎉 <b>Membership is active!</b> Tap <b>◀ SplitMate</b> in the top-left corner or swipe up to return to your app.";
+        hint.style.color = "#2BB07C";
+        hint.style.fontWeight = "600";
       }
 
-      // Try opening the app via registered URL scheme
-      window.location.href = "splitmate://pro-activated";
+      // Safe deep link dispatch via hidden iframe to avoid Safari invalid address alert
+      try {
+        var iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = 'splitmate://pro-activated';
+        document.body.appendChild(iframe);
+        setTimeout(function() {
+          try { document.body.removeChild(iframe); } catch(e) {}
+        }, 1000);
+      } catch (e) {}
 
-      // Attempt window close (for in-app webviews / tabs)
+      // Attempt window close (for in-app webviews)
       setTimeout(function() {
         try { window.close(); } catch(e) {}
       }, 500);

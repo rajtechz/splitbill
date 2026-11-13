@@ -137,7 +137,7 @@ export interface Expense {
   comments?: ExpenseComment[];
 }
 
-export type PaymentMethod = 'Cash' | 'UPI' | 'Bank transfer' | 'Other';
+export type PaymentMethod = 'SplitMate Wallet' | 'UPI' | 'Cash' | 'Bank transfer' | 'Other';
 export type SettlementStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED';
 
 export interface Settlement {

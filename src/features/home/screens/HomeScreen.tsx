@@ -20,13 +20,14 @@ import { BalanceCard } from '../../../components/cards/BalanceCard';
 import { GroupCard } from '../../../components/cards/GroupCard';
 import { ExpenseCard } from '../../../components/cards/ExpenseCard';
 import { EmptyState } from '../../../components/common/EmptyState';
+import { useWalletStore } from '../../../store/useWalletStore';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
-  const { colors, typography, spacing, borderRadius = staticBorderRadius, shadows = staticShadows } = useTheme();
+  const { colors, typography, spacing, borderRadius = staticBorderRadius, shadows = staticShadows, isDark } = useTheme();
 
   const {
     groups,
@@ -37,6 +38,7 @@ export const HomeScreen: React.FC = () => {
   } = useAppStore();
   const currentUser = useAuthStore(state => state.currentUser);
   const isPro = useAuthStore(state => state.isPro);
+  const walletBalance = useWalletStore(state => state.balance);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -227,6 +229,42 @@ export const HomeScreen: React.FC = () => {
             <Icon name="pie-chart" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
+
+        {/* SplitMate Digital Wallet Quick Card */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('Wallet')}
+          style={[
+            styles.walletHomeCard,
+            {
+              backgroundColor: isDark ? '#0C2A1F' : 'rgba(23, 107, 80, 0.08)',
+              borderColor: isDark ? 'rgba(43, 176, 124, 0.35)' : 'rgba(23, 107, 80, 0.2)',
+              borderRadius: borderRadius.lg,
+              marginBottom: spacing.md,
+            },
+          ]}
+        >
+          <View style={styles.walletHomeLeft}>
+            <View style={styles.walletHomeIconCircle}>
+              <Icon name="wallet" size={18} color="#D4AF37" />
+            </View>
+            <View>
+              <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '600' }]}>
+                SplitMate Digital Wallet
+              </Text>
+              <Text style={[typography.h3, { color: isDark ? '#34D399' : '#15803D', fontWeight: '800' }]}>
+                ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.walletHomeRight}>
+            <View style={[styles.walletPillBtn, { backgroundColor: '#176B50' }]}>
+              <Text style={styles.walletPillBtnText}>Top-up / Bank</Text>
+              <Icon name="chevron-right" size={12} color="#FFFFFF" />
+            </View>
+          </View>
+        </TouchableOpacity>
 
         {/* Sponsored Ad Banner (Free Tier Only - 100% Ad-Free for Pro Members) */}
         {!isPro && (
@@ -501,5 +539,41 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  walletHomeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderWidth: 1,
+  },
+  walletHomeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  walletHomeIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(212, 175, 55, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  walletHomeRight: {
+    alignItems: 'flex-end',
+  },
+  walletPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  walletPillBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

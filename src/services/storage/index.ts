@@ -13,6 +13,7 @@ const STORAGE_KEYS = {
   ACTIVITIES_CACHE: '@splitmate_cache_activities',
   SETTLEMENTS_CACHE: '@splitmate_cache_settlements',
   PERMISSIONS_ONBOARDING_COMPLETED: '@splitmate_permissions_onboarding_completed',
+  WALLET_STATE: '@splitmate_wallet_state',
 };
 
 export const storage = {

@@ -44,6 +44,7 @@ export type RootStackParamList = {
   };
 
   // Other modules
+  Wallet: undefined;
   Analytics: undefined;
   Notifications: undefined;
   Search: undefined;

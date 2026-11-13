@@ -22,16 +22,17 @@ import { Avatar } from '../../../components/avatars/Avatar';
 import { Icon } from '../../../components/common/Icon';
 import { PaymentMethod, CurrencyCode, SettlementStatus } from '../../../types';
 import { initiateUpiTransfer } from '../../../utils/upi';
+import { useWalletStore } from '../../../store/useWalletStore';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RecordSettlementRouteProp = RouteProp<RootStackParamList, 'RecordSettlement'>;
 
-const PAYMENT_METHODS: PaymentMethod[] = ['UPI', 'Cash', 'Bank transfer', 'Other'];
+const PAYMENT_METHODS: PaymentMethod[] = ['SplitMate Wallet', 'UPI', 'Cash', 'Bank transfer', 'Other'];
 
 export const RecordSettlementScreen: React.FC = () => {
   const route = useRoute<RecordSettlementRouteProp>();
   const navigation = useNavigation<NavigationProp>();
-  const { colors, typography, spacing, borderRadius } = useTheme();
+  const { colors, typography, spacing, borderRadius, isDark } = useTheme();
 
   const {
     preselectedGroupId,
@@ -43,6 +44,7 @@ export const RecordSettlementScreen: React.FC = () => {
 
   const { groups, friends, recordSettlement } = useAppStore();
   const currentUser = useAuthStore(state => state.currentUser);
+  const { balance: walletBalance, payFromWallet } = useWalletStore();
 
   // Default payer and receiver
   const [payerId, setPayerId] = useState<string>(preselectedPayerId || currentUser?.id || 'usr_me');
@@ -161,6 +163,27 @@ export const RecordSettlementScreen: React.FC = () => {
       return;
     }
 
+    if (paymentMethod === 'SplitMate Wallet') {
+      if (walletBalance < parsedAmount) {
+        Alert.alert(
+          'Insufficient Wallet Balance',
+          `You have ₹${walletBalance.toLocaleString('en-IN')} in your wallet, but this settlement requires ₹${parsedAmount.toLocaleString('en-IN')}. Please add funds to your wallet first.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Add Money', onPress: () => navigation.navigate('Wallet') },
+          ]
+        );
+        return;
+      }
+
+      // Deduct from wallet
+      const walletRes = await payFromWallet(parsedAmount, receiverObj?.name || 'Friend');
+      if (!walletRes.success) {
+        Alert.alert('Payment Failed', walletRes.message);
+        return;
+      }
+    }
+
     setSubmitting(true);
     setErrorMsg(null);
 
@@ -179,7 +202,7 @@ export const RecordSettlementScreen: React.FC = () => {
         paymentMethod,
         status,
         upiId: paymentMethod === 'UPI' ? effectiveUpiId : undefined,
-        transactionReference: transactionRef.trim() || undefined,
+        transactionReference: transactionRef.trim() || (paymentMethod === 'SplitMate Wallet' ? `WLT-${Date.now().toString().slice(-6)}` : undefined),
         notes: notes.trim() || undefined,
         date: new Date().toISOString(),
       });
@@ -361,6 +384,73 @@ export const RecordSettlementScreen: React.FC = () => {
             );
           })}
         </View>
+
+        {/* SplitMate Digital Wallet Section */}
+        {paymentMethod === 'SplitMate Wallet' && (
+          <View
+            style={[
+              styles.walletCardSection,
+              {
+                backgroundColor: isDark ? '#0C2A1F' : 'rgba(23, 107, 80, 0.08)',
+                borderColor: isDark ? 'rgba(43, 176, 124, 0.4)' : '#2BB07C',
+                borderRadius: borderRadius.lg,
+                padding: spacing.md,
+                marginTop: spacing.md,
+              },
+            ]}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={styles.walletIconMiniCircle}>
+                  <Icon name="wallet" size={16} color="#D4AF37" />
+                </View>
+                <Text style={[typography.titleMedium, { color: colors.textPrimary, marginLeft: 8, fontWeight: '700' }]}>
+                  SplitMate Digital Wallet
+                </Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate('Wallet')}>
+                <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>Manage Wallet</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.walletBalanceRow, { backgroundColor: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.85)', borderRadius: borderRadius.md }]}>
+              <View>
+                <Text style={[typography.caption, { color: colors.textSecondary }]}>Available Balance</Text>
+                <Text style={[typography.h2, { color: isDark ? '#34D399' : '#15803D', fontWeight: '800', marginTop: 2 }]}>
+                  ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </Text>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('Wallet')}
+                style={[styles.walletTopupBtn, { backgroundColor: colors.primary, borderRadius: borderRadius.sm }]}
+              >
+                <Icon name="plus" size={13} color="#FFFFFF" />
+                <Text style={styles.walletTopupBtnText}>Top-up</Text>
+              </TouchableOpacity>
+            </View>
+
+            {parsedAmount > 0 && (
+              <View style={{ marginTop: 10 }}>
+                {walletBalance >= parsedAmount ? (
+                  <View style={styles.sufficientBadge}>
+                    <Icon name="check-circle" size={14} color="#10B981" />
+                    <Text style={styles.sufficientBadgeText}>
+                      Instant 1-tap settlement • Zero fees
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.insufficientBadge}>
+                    <Icon name="alert" size={14} color="#EF4444" />
+                    <Text style={styles.insufficientBadgeText}>
+                      Insufficient wallet balance. You need ₹{(parsedAmount - walletBalance).toLocaleString('en-IN')} more.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        )}
 
         {/* UPI Specific Section */}
         {paymentMethod === 'UPI' && (
@@ -634,6 +724,63 @@ const styles = StyleSheet.create({
   },
   upiCard: {
     borderWidth: 1,
+  },
+  walletCardSection: {
+    borderWidth: 1,
+  },
+  walletIconMiniCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(212, 175, 55, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  walletBalanceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+  },
+  walletTopupBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 4,
+  },
+  walletTopupBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  sufficientBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    gap: 6,
+  },
+  sufficientBadgeText: {
+    color: '#10B981',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  insufficientBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    gap: 6,
+  },
+  insufficientBadgeText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '600',
   },
   upiInput: {
     height: 42,

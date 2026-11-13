@@ -24,6 +24,7 @@ import { useSecurityStore } from '../../../store/useSecurityStore';
 import { config } from '../../../app/config';
 import { SUPPORTED_CURRENCIES } from '../../../types';
 import { repository } from '../../../services/api/repository';
+import { useWalletStore } from '../../../store/useWalletStore';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -32,6 +33,7 @@ export const ProfileScreen: React.FC = () => {
   const { colors, typography, spacing, borderRadius, shadows, setMode, isDark } = useTheme();
   const { currentUser, logout, isPro, toggleProDev, updateUser } = useAuthStore();
   const { isPinEnabled, disablePin, isBiometricsEnabled, toggleBiometrics } = useSecurityStore();
+  const walletBalance = useWalletStore(state => state.balance);
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -198,6 +200,33 @@ export const ProfileScreen: React.FC = () => {
             { backgroundColor: colors.surface, borderRadius: borderRadius.lg, borderColor: colors.borderSubtle },
           ]}
         >
+          {/* SplitMate Digital Wallet Row */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Wallet')}
+            style={styles.settingRow}
+          >
+            <View style={[styles.settingIcon, { backgroundColor: 'rgba(212, 175, 55, 0.2)' }]}>
+              <Icon name="wallet" size={18} color="#D4AF37" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={[typography.titleMedium, { color: colors.textPrimary, fontWeight: '700' }]}>
+                SplitMate Digital Wallet
+              </Text>
+              <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                Top-up money, transfer to bank & 1-tap bill splits
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={[typography.titleMedium, { color: isDark ? '#34D399' : '#15803D', fontWeight: '800' }]}>
+                ₹{walletBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </Text>
+              <Icon name="chevron-right" size={16} color={colors.textSecondary} />
+            </View>
+          </TouchableOpacity>
+
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+
           {/* Dark Mode Row */}
           <View style={styles.settingRow}>
             <View style={[styles.settingIcon, { backgroundColor: colors.primaryLight }]}>
