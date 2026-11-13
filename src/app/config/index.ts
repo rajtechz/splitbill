@@ -14,7 +14,7 @@ export interface AppConfig {
  * Set to true:  Points to live production cloud server (Render + MongoDB Atlas)
  * Set to false: Points to your local machine (localhost:3000 for iOS / 10.0.2.2:3000 for Android)
  */
-export const USE_PRODUCTION_BACKEND = true;
+export const USE_PRODUCTION_BACKEND = false;
 
 export const DEFAULT_DEV_API_URLS = {
   androidEmulator: 'http://10.0.2.2:3000/api/v1',

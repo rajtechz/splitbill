@@ -33,8 +33,6 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
         if (USE_PRODUCTION_BACKEND) {
           updateConfig({ apiBaseUrl: DEFAULT_DEV_API_URLS.production });
           await storage.setApiBaseUrl(DEFAULT_DEV_API_URLS.production);
-        } else if (savedUrl) {
-          updateConfig({ apiBaseUrl: savedUrl });
         } else {
           const defaultUrl = getDefaultApiBaseUrl();
           updateConfig({ apiBaseUrl: defaultUrl });

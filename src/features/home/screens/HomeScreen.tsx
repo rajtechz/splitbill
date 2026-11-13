@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../app/navigation/types';
-import { useTheme } from '../../../theme';
+import { useTheme, borderRadius as staticBorderRadius, shadows as staticShadows } from '../../../theme';
 import { useAppStore } from '../../../store/useAppStore';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { Avatar } from '../../../components/avatars/Avatar';
@@ -26,7 +26,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
-  const { colors, typography, spacing } = useTheme();
+  const { colors, typography, spacing, borderRadius = staticBorderRadius, shadows = staticShadows } = useTheme();
 
   const {
     groups,
@@ -85,18 +85,28 @@ export const HomeScreen: React.FC = () => {
         ]}
       >
         <View style={styles.headerLeft}>
-          <Avatar
-            name={currentUser?.name || 'User'}
-            url={currentUser?.avatarUrl}
-            size={40}
-          />
+          <View style={isPro ? styles.goldAvatarRing : undefined}>
+            <Avatar
+              name={currentUser?.name || 'User'}
+              url={currentUser?.avatarUrl}
+              size={40}
+            />
+          </View>
           <View style={{ marginLeft: 12 }}>
             <Text style={[typography.caption, { color: colors.textSecondary }]}>
               {getGreeting()},
             </Text>
-            <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-              {currentUser?.name || 'Friend'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
+                {currentUser?.name || 'Friend'}
+              </Text>
+              {isPro && (
+                <View style={styles.vipGoldBadge}>
+                  <Icon name="crown" size={10} color="#8F6B00" />
+                  <Text style={styles.vipGoldBadgeText}>VIP PRO</Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -217,6 +227,47 @@ export const HomeScreen: React.FC = () => {
             <Icon name="pie-chart" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
+
+        {/* Sponsored Ad Banner (Free Tier Only - 100% Ad-Free for Pro Members) */}
+        {!isPro && (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('Subscription')}
+            style={[
+              styles.sponsoredAdCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.borderSubtle,
+                borderRadius: borderRadius.lg,
+                marginBottom: spacing.md,
+                ...shadows.soft,
+              },
+            ]}
+          >
+            <View style={styles.adTagRow}>
+              <View style={styles.adBadge}>
+                <Text style={styles.adBadgeText}>SPONSORED</Text>
+              </View>
+              <Text style={[typography.caption, { color: colors.textMuted, fontSize: 10 }]}>
+                SplitMate Partner
+              </Text>
+            </View>
+            <View style={styles.adBodyRow}>
+              <View style={[styles.adIconBox, { backgroundColor: '#FFF4D4' }]}>
+                <Icon name="shield" size={18} color="#D4AF37" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={[typography.titleMedium, { color: colors.textPrimary, fontSize: 13 }]}>
+                  Go Ad-Free with SplitMate Pro
+                </Text>
+                <Text style={[typography.caption, { color: colors.textSecondary, fontSize: 11, marginTop: 1 }]}>
+                  Enjoy zero ads, unlimited receipt scans, and live foreign exchange rates.
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={16} color={colors.textSecondary} />
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Groups Section */}
         <View style={styles.sectionHeader}>
@@ -393,5 +444,62 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 6,
+  },
+  goldAvatarRing: {
+    borderWidth: 2,
+    borderColor: '#D4AF37',
+    borderRadius: 24,
+    padding: 2,
+  },
+  vipGoldBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF4D4',
+    borderWidth: 1,
+    borderColor: '#D4AF37',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 6,
+  },
+  vipGoldBadgeText: {
+    color: '#8F6B00',
+    fontSize: 9,
+    fontWeight: '800',
+    marginLeft: 3,
+    letterSpacing: 0.5,
+  },
+  sponsoredAdCard: {
+    padding: 12,
+    borderWidth: 1,
+  },
+  adTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  adBadge: {
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  adBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    color: '#888888',
+  },
+  adBodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  adIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -5,12 +5,14 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Share,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../app/navigation/types';
 import { useTheme } from '../../../theme';
 import { useAppStore } from '../../../store/useAppStore';
+import { useAlert } from '../../../context/AlertContext';
 import { AppHeader } from '../../../components/common/AppHeader';
 import { MiniBarChart } from '../../../components/charts/BarChart';
 import { CategoryBreakdown } from '../../../components/charts/CategoryPieChart';
@@ -19,7 +21,6 @@ import { ExpenseCategory } from '../../../types';
 import { Icon } from '../../../components/common/Icon';
 import { useAuthStore } from '../../../store/useAuthStore';
 import { ProPaywallModal } from '../../../components/modals/ProPaywallModal';
-import { Alert } from 'react-native';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -41,24 +42,58 @@ export const AnalyticsScreen: React.FC = () => {
   const { colors, typography, spacing, borderRadius, shadows } = useTheme();
   const { expenses, groups } = useAppStore();
   const isPro = useAuthStore(state => state.isPro);
+  const { showAlert } = useAlert();
 
   const [timeframe, setTimeframe] = useState<'monthly' | 'weekly'>('monthly');
   const [showProModal, setShowProModal] = useState(false);
 
-  const handleExport = () => {
+  const totalSpending = useMemo(() => {
+    return expenses.reduce((sum, e) => sum + e.totalAmount, 0);
+  }, [expenses]);
+
+  const handleExport = async () => {
     if (!isPro) {
       setShowProModal(true);
       return;
     }
-    Alert.alert(
-      '📊 Spending Report Exported',
-      `Exported ${expenses.length} itemized transactions to SplitMate_Expenses_2026.csv. Ready for tax filings and accounting!`
-    );
-  };
 
-  const totalSpending = useMemo(() => {
-    return expenses.reduce((sum, e) => sum + e.totalAmount, 0);
-  }, [expenses]);
+    if (expenses.length === 0) {
+      showAlert({
+        title: 'No Expenses Found',
+        message: 'Add some expenses first before generating financial reports.',
+        variant: 'info',
+        confirmText: 'OK',
+      });
+      return;
+    }
+
+    // Build real itemized CSV report
+    const header = 'Date,Title,Category,Amount,Currency,Group,Split Method\n';
+    const rows = expenses
+      .map(
+        e =>
+          `"${new Date(e.date).toLocaleDateString()}","${e.title.replace(/"/g, '""')}","${e.category}",${e.totalAmount},"${e.currency}","${e.groupName || 'Direct'}","${e.splitMethod}"`
+      )
+      .join('\n');
+    const csvContent = `${header}${rows}\n\n# Summary: Total Spending = ₹${totalSpending.toLocaleString('en-IN')}, Total Expenses = ${expenses.length}`;
+
+    try {
+      await Share.share({
+        title: 'SplitMate_Expenses_Report.csv',
+        message: csvContent,
+      });
+
+      showAlert({
+        title: 'Financial Report Exported!',
+        message: `Exported ${expenses.length} transactions in CSV/Excel format. Ready for taxes, accounting and expense auditing!`,
+        variant: 'celebration',
+        emoji: '📊',
+        confirmText: 'Done',
+      });
+    } catch (e) {
+      // User dismissed share
+    }
+  };
 
   const averageExpense = useMemo(() => {
     if (expenses.length === 0) return 0;

@@ -144,45 +144,45 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
 
           {/* Action Buttons */}
           <View style={styles.actions}>
-            {/* 1. Official Browser Checkout Button */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={handleOpenBrowserCheckout}
-              disabled={processing}
-              style={[
-                styles.primaryBtn,
-                {
-                  backgroundColor: '#0C2340', // Razorpay Dark Blue
-                  borderRadius: borderRadius.md,
-                },
-              ]}
-            >
-              <Text style={styles.primaryBtnText}>
-                Pay {displayAmount} via Razorpay Checkout
-              </Text>
-            </TouchableOpacity>
-
-            {/* 2. Instant Sandbox Test Simulator */}
+            {/* 1. Instant Sandbox Test Simulator (Recommended for Test Mode) */}
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handleSimulateSandboxPayment}
               disabled={processing}
               style={[
-                styles.secondaryBtn,
+                styles.primaryBtn,
                 {
                   backgroundColor: colors.primary,
                   borderRadius: borderRadius.md,
-                  marginTop: 10,
                 },
               ]}
             >
               {processing ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.secondaryBtnText}>
+                <Text style={styles.primaryBtnText}>
                   ⚡ Complete Test Payment (Sandbox Instant)
                 </Text>
               )}
+            </TouchableOpacity>
+
+            {/* 2. Official Browser Checkout Button */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleOpenBrowserCheckout}
+              disabled={processing}
+              style={[
+                styles.secondaryBtn,
+                {
+                  backgroundColor: '#0C2340', // Razorpay Dark Blue
+                  borderRadius: borderRadius.md,
+                  marginTop: 10,
+                },
+              ]}
+            >
+              <Text style={styles.secondaryBtnText}>
+                Pay {displayAmount} via Razorpay Checkout
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity

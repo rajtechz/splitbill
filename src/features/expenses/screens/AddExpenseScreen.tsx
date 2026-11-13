@@ -14,6 +14,7 @@ import { RootStackParamList } from '../../../app/navigation/types';
 import { useTheme } from '../../../theme';
 import { useAppStore } from '../../../store/useAppStore';
 import { useAuthStore } from '../../../store/useAuthStore';
+import { useAlert } from '../../../context/AlertContext';
 import { AppHeader } from '../../../components/common/AppHeader';
 import { Button } from '../../../components/buttons/Button';
 import { AmountInput } from '../../../components/inputs/AmountInput';
@@ -56,18 +57,40 @@ const CATEGORIES: { key: ExpenseCategory; label: string; icon: IconName }[] = [
   { key: 'Other', label: 'Other', icon: 'receipt' },
 ];
 
+const FX_RATES_TO_INR: Record<CurrencyCode, number> = {
+  INR: 1,
+  USD: 86.85,
+  EUR: 90.20,
+  GBP: 108.40,
+  AUD: 55.30,
+  CAD: 61.10,
+  SGD: 64.20,
+  AED: 23.65,
+  JPY: 0.56,
+};
+
 export const AddExpenseScreen: React.FC = () => {
   const route = useRoute<AddExpenseRouteProp>();
   const navigation = useNavigation<NavigationProp>();
   const { colors, typography, spacing, borderRadius, shadows } = useTheme();
 
   const { preselectedGroupId, preselectedFriendId } = route.params || {};
-  const { groups, friends, createExpense } = useAppStore();
+  const { groups, friends, expenses, createExpense } = useAppStore();
   const currentUser = useAuthStore(state => state.currentUser);
   const isPro = useAuthStore(state => state.isPro);
+  const { showAlert } = useAlert();
 
   const [showProModal, setShowProModal] = useState(false);
   const [proTriggerFeature, setProTriggerFeature] = useState<ProFeature>('receipt_ocr');
+
+  // Daily Expense Limit (Free Tier = 4/day, Pro = Unlimited)
+  const todayDateStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayExpenseCount = useMemo(() => {
+    return expenses.filter(e => {
+      const isMine = e.createdBy === currentUser?.id || !e.createdBy;
+      return isMine && e.date.startsWith(todayDateStr);
+    }).length;
+  }, [expenses, currentUser?.id, todayDateStr]);
 
   const handleScanReceipt = () => {
     if (!isPro) {
@@ -80,10 +103,22 @@ export const AddExpenseScreen: React.FC = () => {
     setAmountStr('2450');
     setCategory('Food');
     setNotes('Scanned via SplitMate Pro AI OCR (Tax & Service included)');
-    Alert.alert(
-      '🧾 Receipt Scanned Successfully',
-      'AI OCR extracted ₹2,450 for Olive Garden Dinner. Amount and details auto-filled!'
-    );
+    showAlert({
+      title: 'Receipt Scanned Successfully',
+      message: 'AI OCR extracted ₹2,450 for Olive Garden Dinner. Amount and items auto-filled!',
+      variant: 'celebration',
+      emoji: '🧾',
+      confirmText: 'Awesome!',
+    });
+  };
+
+  const handleSelectCurrency = (newCurrency: CurrencyCode) => {
+    if (!isPro && newCurrency !== 'INR') {
+      setProTriggerFeature('currency_converter');
+      setShowProModal(true);
+      return;
+    }
+    setCurrency(newCurrency);
   };
 
   // Form states
@@ -295,6 +330,13 @@ export const AddExpenseScreen: React.FC = () => {
       return;
     }
 
+    // Free Tier Daily Expense Limit (4 per day)
+    if (!isPro && todayExpenseCount >= 4) {
+      setProTriggerFeature('unlimited_expenses');
+      setShowProModal(true);
+      return;
+    }
+
     setSaving(true);
     setErrorMsg(null);
 
@@ -348,8 +390,38 @@ export const AddExpenseScreen: React.FC = () => {
         contentContainerStyle={[styles.content, { paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Free Tier Daily Limit Banner */}
+        {!isPro && (
+          <View
+            style={[
+              styles.dailyLimitCard,
+              {
+                backgroundColor: colors.surfaceVariant,
+                borderColor: todayExpenseCount >= 4 ? colors.danger : colors.borderSubtle,
+                borderRadius: borderRadius.md,
+              },
+            ]}
+          >
+            <View style={styles.dailyLimitRow}>
+              <Icon
+                name="activity"
+                size={16}
+                color={todayExpenseCount >= 4 ? colors.danger : colors.primary}
+              />
+              <Text style={[typography.caption, { color: colors.textSecondary, marginLeft: 8, flex: 1 }]}>
+                Free Plan: <Text style={{ fontWeight: '700', color: todayExpenseCount >= 4 ? colors.danger : colors.textPrimary }}>{todayExpenseCount}/4</Text> daily expenses used
+              </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Subscription')}>
+                <Text style={[typography.caption, { color: '#176B50', fontWeight: '800' }]}>
+                  {todayExpenseCount >= 4 ? 'UNLOCK PRO' : 'UPGRADE'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Title */}
-        <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 6 }]}>
+        <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 6, marginTop: isPro ? 0 : 8 }]}>
           DESCRIPTION / TITLE *
         </Text>
         <TextInput
@@ -420,10 +492,33 @@ export const AddExpenseScreen: React.FC = () => {
           placeholder="0.00"
         />
 
-        {/* Currency Picker */}
+        {/* Currency Picker with Pro Guard */}
         <View style={{ marginTop: spacing.sm }}>
-          <CurrencySelector selectedCurrency={currency} onSelect={setCurrency} />
+          <CurrencySelector selectedCurrency={currency} onSelect={handleSelectCurrency} />
         </View>
+
+        {/* Live FX Rate Conversion Banner (When foreign currency is selected) */}
+        {currency !== 'INR' && parsedAmount > 0 && (
+          <View
+            style={[
+              styles.fxBanner,
+              {
+                backgroundColor: '#E7F5EF',
+                borderColor: '#239B68',
+                borderRadius: borderRadius.sm,
+              },
+            ]}
+          >
+            <Icon name="refresh" size={14} color="#176B50" />
+            <Text style={[typography.caption, { color: '#176B50', fontWeight: '700', marginLeft: 6 }]}>
+              Live FX: 1 {currency} ≈ ₹{FX_RATES_TO_INR[currency]} INR • Converted: ₹
+              {(parsedAmount * FX_RATES_TO_INR[currency]).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </Text>
+          </View>
+        )}
 
         {/* Category Picker */}
         <Text
@@ -1206,5 +1301,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     marginTop: 12,
+  },
+  dailyLimitCard: {
+    padding: 10,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  dailyLimitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  fxBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 8,
+    borderWidth: 1,
   },
 });

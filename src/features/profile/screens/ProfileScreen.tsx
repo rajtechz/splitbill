@@ -97,11 +97,13 @@ export const ProfileScreen: React.FC = () => {
               accessibilityRole="button"
               accessibilityLabel="Change profile picture"
             >
-              <Avatar
-                name={currentUser?.name || 'User'}
-                url={currentUser?.avatarUrl}
-                size={68}
-              />
+              <View style={isPro ? styles.goldAvatarRing : undefined}>
+                <Avatar
+                  name={currentUser?.name || 'User'}
+                  url={currentUser?.avatarUrl}
+                  size={68}
+                />
+              </View>
               <View
                 pointerEvents="none"
                 style={[
@@ -122,7 +124,8 @@ export const ProfileScreen: React.FC = () => {
                 </Text>
                 {isPro ? (
                   <View style={styles.proNamePill}>
-                    <Text style={styles.proNamePillText}>PRO</Text>
+                    <Icon name="crown" size={10} color="#122E24" />
+                    <Text style={styles.proNamePillText}>VIP GOLD PRO</Text>
                   </View>
                 ) : null}
               </View>
@@ -627,8 +630,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   proNamePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#D4AF37',
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 6,
     marginLeft: 8,
@@ -638,5 +643,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
+    marginLeft: 4,
+  },
+  goldAvatarRing: {
+    borderWidth: 2.5,
+    borderColor: '#D4AF37',
+    borderRadius: 38,
+    padding: 2,
   },
 });

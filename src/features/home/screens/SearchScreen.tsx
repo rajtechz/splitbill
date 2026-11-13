@@ -27,6 +27,7 @@ export const SearchScreen: React.FC = () => {
   const { colors, typography, spacing, borderRadius } = useTheme();
   const { groups, friends, expenses } = useAppStore();
   const currentUser = useAuthStore(state => state.currentUser);
+  const isPro = useAuthStore(state => state.isPro);
 
   const [query, setQuery] = useState('');
 
@@ -48,6 +49,9 @@ export const SearchScreen: React.FC = () => {
           (e.notes && e.notes.toLowerCase().includes(q))
       )
     : [];
+
+  const visibleExpenses = isPro ? matchedExpenses : matchedExpenses.slice(0, 3);
+  const hiddenProCount = isPro ? 0 : Math.max(0, matchedExpenses.length - 3);
 
   const totalResults = matchedGroups.length + matchedFriends.length + matchedExpenses.length;
 
@@ -129,9 +133,9 @@ export const SearchScreen: React.FC = () => {
             {matchedExpenses.length > 0 && (
               <View style={{ marginBottom: spacing.lg }}>
                 <Text style={[typography.caption, { color: colors.textSecondary, marginBottom: 8 }]}>
-                  EXPENSES ({matchedExpenses.length})
+                  EXPENSES ({isPro ? matchedExpenses.length : `${visibleExpenses.length} of ${matchedExpenses.length}`})
                 </Text>
-                {matchedExpenses.map(e => (
+                {visibleExpenses.map(e => (
                   <ExpenseCard
                     key={e.id}
                     expense={e}
@@ -140,6 +144,37 @@ export const SearchScreen: React.FC = () => {
                     onPress={() => navigation.navigate('ExpenseDetails', { expenseId: e.id })}
                   />
                 ))}
+
+                {/* Pro Deep History Banner */}
+                {hiddenProCount > 0 && (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => navigation.navigate('Subscription')}
+                    style={[
+                      styles.proSearchBanner,
+                      {
+                        backgroundColor: '#122E24',
+                        borderColor: '#D4AF37',
+                        borderRadius: borderRadius.md,
+                      },
+                    ]}
+                  >
+                    <View style={styles.proSearchIconWrap}>
+                      <Icon name="crown" size={20} color="#D4AF37" />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={[typography.titleMedium, { color: '#FFFFFF', fontSize: 13 }]}>
+                        Unlock {hiddenProCount} More Historical Expense{hiddenProCount > 1 ? 's' : ''}
+                      </Text>
+                      <Text style={[typography.caption, { color: '#B8E7D3', fontSize: 11, marginTop: 1 }]}>
+                        Free searches recent 3 items. SplitMate Pro searches your entire deep expense history.
+                      </Text>
+                    </View>
+                    <View style={styles.proUnlockPill}>
+                      <Text style={styles.proUnlockPillText}>PRO</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </>
@@ -168,6 +203,33 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
+  },
+  proSearchBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    marginTop: 10,
+    borderWidth: 1,
+  },
+  proSearchIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proUnlockPill: {
+    backgroundColor: '#D4AF37',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginLeft: 8,
+  },
+  proUnlockPillText: {
+    color: '#122E24',
+    fontSize: 11,
+    fontWeight: '800',
   },
 });
 
