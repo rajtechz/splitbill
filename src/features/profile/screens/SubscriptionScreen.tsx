@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../../theme';
@@ -64,6 +65,8 @@ export const SubscriptionScreen: React.FC = () => {
   const [upgrading, setUpgrading] = useState(false);
   const [razorpayOrder, setRazorpayOrder] = useState<RazorpayOrderResponse | null>(null);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const handleSubscribe = async () => {
     setUpgrading(true);
@@ -128,32 +131,20 @@ export const SubscriptionScreen: React.FC = () => {
     }
   };
 
-  const handleCancelSubscription = () => {
-    showAlert({
-      title: 'Cancel Pro Subscription',
-      message: 'Are you sure you want to revert to the Free tier? You will lose unlimited receipt OCR scanning and advanced exports.',
-      variant: 'danger',
-      confirmText: 'Cancel Plan',
-      cancelText: 'Keep Pro',
-      isDestructive: true,
-      onConfirm: async () => {
-        // 1. Instantly downgrade auth state optimistically
-        await downgradeToFree();
+  const handleConfirmCancel = async () => {
+    setCancelling(true);
+    try {
+      // 1. Instantly downgrade auth state locally in Zustand & AsyncStorage
+      await downgradeToFree();
 
-        // 2. Notify backend in background (graceful catch)
-        subscriptionService.cancelSubscription().catch(err => {
-          console.warn('Backend subscription cancellation warning:', err);
-        });
-
-        // 3. Show instant confirmation alert
-        showAlert({
-          title: 'Subscription Cancelled',
-          message: 'You have been successfully reverted to the Free tier.',
-          variant: 'info',
-          confirmText: 'OK',
-        });
-      },
-    });
+      // 2. Fire backend cancellation in background
+      subscriptionService.cancelSubscription().catch(err => {
+        console.warn('Backend subscription cancellation warning:', err);
+      });
+    } finally {
+      setCancelling(false);
+      setCancelModalVisible(false);
+    }
   };
 
   return (
@@ -297,7 +288,7 @@ export const SubscriptionScreen: React.FC = () => {
           <View style={styles.section}>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={handleCancelSubscription}
+              onPress={() => setCancelModalVisible(true)}
               style={[
                 styles.cancelBtn,
                 {
@@ -406,6 +397,118 @@ export const SubscriptionScreen: React.FC = () => {
           });
         }}
       />
+
+      {/* Dedicated In-Screen Cancel Pro Confirmation Modal */}
+      <Modal
+        visible={cancelModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCancelModalVisible(false)}
+      >
+        <View style={[styles.cancelModalBackdrop, { backgroundColor: colors.overlay }]}>
+          <View
+            style={[
+              styles.cancelModalCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border,
+                borderRadius: borderRadius.xl,
+              },
+            ]}
+          >
+            {/* Warning Shield Badge */}
+            <View
+              style={[
+                styles.cancelBadge,
+                {
+                  backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                  borderColor: isDark ? 'rgba(239, 68, 68, 0.35)' : '#FCA5A5',
+                },
+              ]}
+            >
+              <Icon name="alert" size={32} color={colors.danger} />
+            </View>
+
+            {/* Title */}
+            <Text style={[typography.h3, styles.cancelModalTitle, { color: colors.textPrimary }]}>
+              Cancel Pro Subscription?
+            </Text>
+
+            {/* Message */}
+            <Text style={[typography.bodyMedium, styles.cancelModalMessage, { color: colors.textSecondary }]}>
+              Are you sure you want to revert to the Free tier? You will immediately lose access to:
+            </Text>
+
+            {/* Feature loss list */}
+            <View
+              style={[
+                styles.lossBox,
+                {
+                  backgroundColor: isDark ? colors.surfaceVariant : colors.backgroundSecondary,
+                  borderRadius: borderRadius.md,
+                },
+              ]}
+            >
+              <View style={styles.lossRow}>
+                <Text style={styles.lossCross}>✕</Text>
+                <Text style={[styles.lossText, { color: colors.textPrimary }]}>Limited to 4 expenses per day</Text>
+              </View>
+              <View style={styles.lossRow}>
+                <Text style={styles.lossCross}>✕</Text>
+                <Text style={[styles.lossText, { color: colors.textPrimary }]}>AI Receipt Scanner (OCR) locked</Text>
+              </View>
+              <View style={styles.lossRow}>
+                <Text style={styles.lossCross}>✕</Text>
+                <Text style={[styles.lossText, { color: colors.textPrimary }]}>Excel, CSV & PDF exports locked</Text>
+              </View>
+              <View style={styles.lossRow}>
+                <Text style={styles.lossCross}>✕</Text>
+                <Text style={[styles.lossText, { color: colors.textPrimary }]}>VIP Gold badge & zero-ads removed</Text>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.cancelActionsCol}>
+              {/* Keep Pro (Primary Emerald) */}
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setCancelModalVisible(false)}
+                style={[
+                  styles.keepProBtn,
+                  {
+                    backgroundColor: '#176B50',
+                    borderRadius: borderRadius.md,
+                  },
+                ]}
+              >
+                <Text style={styles.keepProBtnText}>Keep Pro Membership</Text>
+              </TouchableOpacity>
+
+              {/* Confirm Cancel (Destructive Outline) */}
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={handleConfirmCancel}
+                disabled={cancelling}
+                style={[
+                  styles.confirmCancelBtn,
+                  {
+                    borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : '#FCA5A5',
+                    borderRadius: borderRadius.md,
+                  },
+                ]}
+              >
+                {cancelling ? (
+                  <ActivityIndicator color={colors.danger} size="small" />
+                ) : (
+                  <Text style={[typography.buttonMedium, { color: colors.danger, fontWeight: '700' }]}>
+                    Yes, Revert to Free Tier
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -565,6 +668,89 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     paddingHorizontal: 10,
+  },
+  cancelModalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  cancelModalCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderWidth: 1,
+    paddingTop: 28,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
+    elevation: 20,
+  },
+  cancelBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  cancelModalTitle: {
+    textAlign: 'center',
+    marginBottom: 8,
+    fontWeight: '700',
+  },
+  cancelModalMessage: {
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  lossBox: {
+    width: '100%',
+    padding: 14,
+    marginBottom: 20,
+    gap: 8,
+  },
+  lossRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  lossCross: {
+    color: '#EF4444',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  lossText: {
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+  },
+  cancelActionsCol: {
+    width: '100%',
+    gap: 10,
+  },
+  keepProBtn: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  keepProBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  confirmCancelBtn: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    width: '100%',
   },
 });
 
