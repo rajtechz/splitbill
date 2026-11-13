@@ -82,8 +82,8 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
           style={[
             styles.card,
             {
-              backgroundColor: colors.surface,
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : colors.border,
+              backgroundColor: isDark ? '#0D1F18' : colors.surface,
+              borderColor: isDark ? 'rgba(43, 176, 124, 0.25)' : colors.border,
               borderRadius: borderRadius.xl,
             },
           ]}
@@ -95,64 +95,95 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
                 <Text style={styles.rzpBadgeText}>R</Text>
               </View>
               <View>
-                <Text style={styles.rzpTitle}>Razorpay</Text>
-                <Text style={styles.rzpSubtitle}>Official Payment Gateway (Test Mode)</Text>
+                <View style={styles.brandTitleRow}>
+                  <Text style={styles.rzpTitle}>Razorpay</Text>
+                  <View style={styles.sandboxPill}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.sandboxText}>SANDBOX</Text>
+                  </View>
+                </View>
+                <Text style={styles.rzpSubtitle}>Official Payment Gateway • Test Mode</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Icon name="close" size={20} color={colors.textSecondary} />
+            <TouchableOpacity activeOpacity={0.7} onPress={onClose} style={[styles.closeBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }]}>
+              <Icon name="close" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          {/* Plan & Amount Summary */}
+          {/* Plan & Amount Summary Card */}
           <View
             style={[
               styles.summaryBox,
               {
-                backgroundColor: isDark ? colors.surfaceVariant : colors.backgroundSecondary,
+                backgroundColor: isDark ? 'rgba(23, 107, 80, 0.16)' : 'rgba(23, 107, 80, 0.08)',
+                borderColor: isDark ? 'rgba(43, 176, 124, 0.35)' : 'rgba(23, 107, 80, 0.2)',
                 borderRadius: borderRadius.lg,
               },
             ]}
           >
-            <View>
-              <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                SUBSCRIPTION
-              </Text>
-              <Text style={[typography.titleMedium, { color: colors.textPrimary, marginTop: 2 }]}>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <View style={styles.planHeaderRow}>
+                <Icon name="crown" size={14} color="#D4AF37" />
+                <Text style={[typography.caption, { color: '#D4AF37', fontWeight: '800', letterSpacing: 0.5 }]}>
+                  PRO MEMBERSHIP
+                </Text>
+              </View>
+              <Text style={[typography.titleMedium, { color: colors.textPrimary, marginTop: 4, fontWeight: '700' }]}>
                 {order.name}
               </Text>
-              <Text style={[typography.bodySmall, { color: colors.textMuted, marginTop: 2 }]}>
-                Order ID: {order.orderId.substring(0, 18)}...
-              </Text>
+              <View style={styles.orderIdBadge}>
+                <Text style={[typography.caption, { color: colors.textMuted, fontSize: 11 }]}>
+                  Order: {order.orderId.substring(0, 16)}...
+                </Text>
+              </View>
             </View>
+
             <View style={styles.amountWrap}>
-              <Text style={[typography.h2, { color: colors.primary, fontWeight: '700' }]}>
+              <Text style={[typography.h2, { color: isDark ? '#3DD598' : '#176B50', fontWeight: '800' }]}>
                 {displayAmount}
               </Text>
-              <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '600' }]}>
                 {order.plan === 'annual' ? '/ year' : '/ month'}
               </Text>
             </View>
           </View>
 
-          {/* Payment Methods Info */}
-          <View style={styles.paymentMethodsRow}>
-            <Text style={[typography.caption, { color: colors.textSecondary }]}>
-              Supports: UPI (GPay, PhonePe, Paytm) • Cards • NetBanking • Wallets
+          {/* Supported Channels Pill Grid with Vector Icons */}
+          <View style={styles.channelsContainer}>
+            <Text style={[typography.caption, styles.channelsLabel, { color: colors.textMuted }]}>
+              ACCEPTED TEST CHANNELS
             </Text>
+            <View style={styles.chipsGrid}>
+              <View style={[styles.chip, { backgroundColor: isDark ? 'rgba(56, 189, 248, 0.1)' : '#F0F9FF', borderColor: isDark ? 'rgba(56, 189, 248, 0.25)' : '#BAE6FD' }]}>
+                <Icon name="smartphone" size={13} color="#38BDF8" />
+                <Text style={[styles.chipText, { color: isDark ? '#7DD3FC' : '#0369A1' }]}>UPI (GPay/PhonePe)</Text>
+              </View>
+              <View style={[styles.chip, { backgroundColor: isDark ? 'rgba(52, 211, 153, 0.1)' : '#F0FDF4', borderColor: isDark ? 'rgba(52, 211, 153, 0.25)' : '#BBF7D0' }]}>
+                <Icon name="credit-card" size={13} color="#34D399" />
+                <Text style={[styles.chipText, { color: isDark ? '#6EE7B7' : '#15803D' }]}>Cards</Text>
+              </View>
+              <View style={[styles.chip, { backgroundColor: isDark ? 'rgba(251, 191, 36, 0.1)' : '#FFFBEB', borderColor: isDark ? 'rgba(251, 191, 36, 0.25)' : '#FDE68A' }]}>
+                <Icon name="bank" size={13} color="#FBBF24" />
+                <Text style={[styles.chipText, { color: isDark ? '#FCD34D' : '#B45309' }]}>NetBanking</Text>
+              </View>
+              <View style={[styles.chip, { backgroundColor: isDark ? 'rgba(167, 139, 250, 0.1)' : '#F5F3FF', borderColor: isDark ? 'rgba(167, 139, 250, 0.25)' : '#DDD6FE' }]}>
+                <Icon name="wallet" size={13} color="#A78BFA" />
+                <Text style={[styles.chipText, { color: isDark ? '#C4B5FD' : '#6D28D9' }]}>Wallets</Text>
+              </View>
+            </View>
           </View>
 
           {/* Action Buttons */}
           <View style={styles.actions}>
-            {/* 1. Instant Sandbox Test Simulator (Recommended for Test Mode) */}
+            {/* 1. Instant Sandbox Test Simulator */}
             <TouchableOpacity
-              activeOpacity={0.8}
+              activeOpacity={0.85}
               onPress={handleSimulateSandboxPayment}
               disabled={processing}
               style={[
                 styles.primaryBtn,
                 {
-                  backgroundColor: colors.primary,
+                  backgroundColor: '#176B50',
                   borderRadius: borderRadius.md,
                 },
               ]}
@@ -160,47 +191,70 @@ export const RazorpayModal: React.FC<RazorpayModalProps> = ({
               {processing ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
-                <Text style={styles.primaryBtnText}>
-                  ⚡ Complete Test Payment (Sandbox Instant)
-                </Text>
+                <View style={styles.btnContentRow}>
+                  <View style={styles.btnIconCircle}>
+                    <Icon name="zap" size={16} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.btnTextWrap}>
+                    <Text style={styles.primaryBtnText}>
+                      Instant Test Payment (Sandbox)
+                    </Text>
+                    <Text style={styles.primaryBtnSub}>
+                      Simulate 100% successful approval in 1 tap
+                    </Text>
+                  </View>
+                </View>
               )}
             </TouchableOpacity>
 
             {/* 2. Official Browser Checkout Button */}
             <TouchableOpacity
-              activeOpacity={0.8}
+              activeOpacity={0.85}
               onPress={handleOpenBrowserCheckout}
               disabled={processing}
               style={[
                 styles.secondaryBtn,
                 {
-                  backgroundColor: '#0C2340', // Razorpay Dark Blue
+                  backgroundColor: '#0C2340',
+                  borderColor: '#1E40AF',
                   borderRadius: borderRadius.md,
                   marginTop: 10,
                 },
               ]}
             >
-              <Text style={styles.secondaryBtnText}>
-                Pay {displayAmount} via Razorpay Checkout
-              </Text>
+              <View style={styles.btnContentRow}>
+                <View style={[styles.btnIconCircle, { backgroundColor: 'rgba(51, 149, 255, 0.2)' }]}>
+                  <Icon name="external-link" size={15} color="#3395FF" />
+                </View>
+                <View style={styles.btnTextWrap}>
+                  <Text style={styles.secondaryBtnText}>
+                    Pay {displayAmount} via Razorpay Checkout
+                  </Text>
+                  <Text style={styles.secondaryBtnSub}>
+                    Opens official webview checkout
+                  </Text>
+                </View>
+              </View>
             </TouchableOpacity>
 
+            {/* Cancel Link */}
             <TouchableOpacity
               onPress={onClose}
               style={styles.cancelBtn}
               disabled={processing}
+              activeOpacity={0.7}
             >
-              <Text style={[typography.caption, { color: colors.textMuted }]}>
-                Cancel and return
+              <Text style={[typography.caption, { color: colors.textMuted, fontWeight: '600' }]}>
+                Cancel and return to app
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Security Footer */}
-          <View style={styles.securityFooter}>
-            <Icon name="shield" size={14} color={colors.primary} />
+          <View style={[styles.securityFooter, { borderTopColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0,0,0,0.06)' }]}>
+            <Icon name="shield-check" size={15} color="#10B981" />
             <Text style={[styles.securityText, { color: colors.textMuted }]}>
-              Secured with 256-bit encryption by Razorpay
+              Secured by 256-Bit SSL Encryption • Razorpay Certified
             </Text>
           </View>
         </View>
@@ -214,41 +268,53 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   card: {
-    width: Math.min(SCREEN_WIDTH - 40, 420),
+    width: Math.min(SCREEN_WIDTH - 32, 420),
     borderWidth: 1,
-    padding: 24,
+    padding: 22,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.4,
-    shadowRadius: 28,
-    elevation: 20,
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.45,
+    shadowRadius: 30,
+    elevation: 24,
   },
   rzpHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   rzpLogoRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   rzpBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: '#0C2340',
+    borderWidth: 1,
+    borderColor: 'rgba(51, 149, 255, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    shadowColor: '#3395FF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
   rzpBadgeText: {
     color: '#3395FF',
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
+  },
+  brandTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   rzpTitle: {
     fontSize: 18,
@@ -256,73 +322,163 @@ const styles = StyleSheet.create({
     color: '#3395FF',
     letterSpacing: -0.3,
   },
+  sandboxPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.35)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 4,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  sandboxText: {
+    color: '#10B981',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
   rzpSubtitle: {
     fontSize: 11,
     color: '#8A9BA8',
-    marginTop: 1,
+    marginTop: 2,
+    fontWeight: '500',
   },
   closeBtn: {
-    padding: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   summaryBox: {
     padding: 16,
+    borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
+  },
+  planHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  orderIdBadge: {
+    marginTop: 4,
   },
   amountWrap: {
     alignItems: 'flex-end',
+    justifyContent: 'center',
   },
-  paymentMethodsRow: {
+  channelsContainer: {
+    marginBottom: 16,
+  },
+  channelsLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    marginBottom: 8,
+  },
+  chipsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  chip: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+  },
+  chipText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   actions: {
     width: '100%',
   },
-  primaryBtn: {
-    height: 50,
+  btnContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    width: '100%',
+  },
+  btnIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#0C2340',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    marginRight: 12,
+  },
+  btnTextWrap: {
+    flex: 1,
+  },
+  primaryBtn: {
+    paddingVertical: 12,
+    justifyContent: 'center',
+    shadowColor: '#176B50',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
   },
   primaryBtnText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
+  primaryBtnSub: {
+    color: '#D1FAE5',
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: 1,
+  },
   secondaryBtn: {
-    height: 48,
+    paddingVertical: 12,
     justifyContent: 'center',
-    alignItems: 'center',
+    borderWidth: 1,
   },
   secondaryBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
   },
+  secondaryBtnSub: {
+    color: '#93C5FD',
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: 1,
+  },
   cancelBtn: {
-    marginTop: 14,
+    marginTop: 12,
     alignItems: 'center',
-    padding: 4,
+    padding: 6,
   },
   securityFooter: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
-    marginTop: 18,
-    paddingTop: 14,
+    marginTop: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
   },
   securityText: {
     fontSize: 11,
+    fontWeight: '500',
   },
 });
 
