@@ -87,10 +87,12 @@ export const RootNavigator: React.FC = () => {
     );
   }
 
-  // If user is authenticated and mPIN is enabled, block with PIN screen
+  // [FUTURE UPDATE: If user is authenticated and mPIN is enabled, block with PIN screen]
+  /*
   if (isAuthenticated && isPinEnabled && isLocked) {
     return <PinLockScreen />;
   }
+  */
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>

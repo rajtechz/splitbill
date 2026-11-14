@@ -33,7 +33,7 @@ export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { colors, typography, spacing, borderRadius, shadows, setMode, isDark } = useTheme();
   const { currentUser, logout, isPro, toggleProDev, updateUser } = useAuthStore();
-  const { isPinEnabled, disablePin, isBiometricsEnabled, toggleBiometrics } = useSecurityStore();
+  const { isPinEnabled, disablePin } = useSecurityStore();
   // [FUTURE UPDATE: SplitMate Digital Wallet]
   // const walletBalance = useWalletStore(state => state.balance);
 
@@ -327,9 +327,8 @@ export const ProfileScreen: React.FC = () => {
             </View>
           </View>
 
+          {/* [FUTURE UPDATE: App Lock 4-Digit mPIN Protection]
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
-
-          {/* 4-Digit mPIN Protection */}
           <View style={styles.settingRow}>
             <View style={[styles.settingIcon, { backgroundColor: '#E0F2FE' }]}>
               <Icon name="lock" size={18} color="#0284C7" />
@@ -351,28 +350,6 @@ export const ProfileScreen: React.FC = () => {
                   disablePin();
                 }
               }}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-
-          {/* Fingerprint / Biometric Unlock */}
-          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
-          <View style={styles.settingRow}>
-            <View style={[styles.settingIcon, { backgroundColor: '#DCFCE7' }]}>
-              <Icon name="fingerprint" size={18} color="#15803D" />
-            </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={[typography.titleMedium, { color: colors.textPrimary }]}>
-                Fingerprint / Biometric Unlock
-              </Text>
-              <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                Open app with fingerprint or 4-digit mPIN
-              </Text>
-            </View>
-            <Switch
-              value={isBiometricsEnabled}
-              onValueChange={val => toggleBiometrics(val)}
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor="#FFFFFF"
             />
@@ -401,9 +378,10 @@ export const ProfileScreen: React.FC = () => {
               </TouchableOpacity>
             </>
           )}
+          */}
 
+          {/* [DEVELOPER TOOL ONLY: Backend & Server API & Dev Pro Toggle - hidden for normal users]
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
-
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => setShowBackendModal(true)}
@@ -439,7 +417,6 @@ export const ProfileScreen: React.FC = () => {
 
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
-          {/* Dev Pro Toggle */}
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={toggleProDev}
@@ -472,6 +449,7 @@ export const ProfileScreen: React.FC = () => {
               </Text>
             </View>
           </TouchableOpacity>
+          */}
 
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
